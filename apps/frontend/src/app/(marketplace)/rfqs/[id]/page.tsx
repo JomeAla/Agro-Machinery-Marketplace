@@ -29,7 +29,7 @@ function CheckIcon({ className }: { className?: string }) {
   );
 }
 
-function statusColors: Record<string, { bg: string; text: string }> = {
+const statusColors: Record<string, { bg: string; text: string }> = {
   OPEN: { bg: 'bg-green-100', text: 'text-green-800' },
   CLOSED: { bg: 'bg-gray-100', text: 'text-gray-800' },
 };

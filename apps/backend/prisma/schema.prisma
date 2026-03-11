@@ -58,9 +58,13 @@ model User {
   orders    Order[]
   rfqs      Rfq[]
   products  Product[]
+  financingRequests FinancingRequest[]
   buyerConversations    Conversation[] @relation("BuyerConversations")
   sellerConversations   Conversation[] @relation("SellerConversations")
-  sentMessages          Message[]
+  messages              Message[]
+  rfqQuotes            RfqQuote[]
+  freightQuotes        FreightQuote[]
+  warrantyClaims       WarrantyClaim[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -136,6 +140,11 @@ model Product {
   rfqs          Rfq[]
   orderItems    OrderItem[]
   manuals       ProductManual[]
+  maintenanceSchedules MaintenanceSchedule[]
+  maintenanceRecords   MaintenanceRecord[]
+  warrantyClaims       WarrantyClaim[]
+  financingRequests    FinancingRequest[]
+  conversations  Conversation[]
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -170,6 +179,9 @@ model Order {
   notes         String?
   items         OrderItem[]
   payment      Payment?
+  escrow       Escrow?
+  freightQuotes FreightQuote[]
+  warrantyClaims WarrantyClaim[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
@@ -323,4 +335,128 @@ model Message {
 
   @@index([conversationId])
   @@index([senderId])
+}
+
+enum FinancingType {
+  LEASE
+  INSTALLMENT
+  LOAN
+}
+
+enum FinancingStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  DISBURSED
+}
+
+model FinancingRequest {
+  id            String          @id @default(uuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+  productId     String
+  product       Product         @relation(fields: [productId], references: [id])
+  financingType FinancingType
+  amount        Decimal         @db.Decimal(12, 2)
+  tenureMonths  Int
+  purpose       String          @db.Text
+  state         String?
+  city          String?
+  status        FinancingStatus @default(PENDING)
+  adminNotes    String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([productId])
+}
+
+enum VehicleType {
+  LOWBED
+  FLATBED
+  TRUCK
+  PICKUP
+}
+
+model FreightQuote {
+  id              String      @id @default(uuid())
+  orderId         String
+  order           Order       @relation(fields: [orderId], references: [id])
+  sellerId        String
+  seller          User        @relation(fields: [sellerId], references: [id])
+  originState     String
+  destinationState String
+  vehicleType     VehicleType
+  cost            Decimal     @db.Decimal(12, 2)
+  estimatedDays   String?
+  notes           String?
+  status          String      @default("pending")
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([orderId])
+  @@index([sellerId])
+}
+
+enum MaintenanceType {
+  ROUTINE
+  REPAIR
+  INSPECTION
+  SERVICE
+}
+
+model MaintenanceSchedule {
+  id              String          @id @default(uuid())
+  productId       String
+  product         Product         @relation(fields: [productId], references: [id])
+  title           String
+  description     String          @db.Text
+  maintenanceType MaintenanceType
+  intervalHours   Int
+  notes           String?
+  records         MaintenanceRecord[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([productId])
+}
+
+model MaintenanceRecord {
+  id              String            @id @default(uuid())
+  productId       String
+  product         Product           @relation(fields: [productId], references: [id])
+  scheduleId      String?
+  schedule        MaintenanceSchedule? @relation(fields: [scheduleId], references: [id])
+  maintenanceType MaintenanceType
+  description     String            @db.Text
+  performedAt     DateTime
+  serviceProvider String?
+  cost            Decimal?          @db.Decimal(12, 2)
+  createdAt       DateTime          @default(now())
+
+  @@index([productId])
+  @@index([scheduleId])
+}
+
+model WarrantyClaim {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id])
+  orderId     String
+  order       Order     @relation(fields: [orderId], references: [id])
+  issue       String
+  description String    @db.Text
+  images      String[]
+  status      String    @default("pending")
+  adminNotes  String?
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([productId])
+  @@index([orderId])
 }

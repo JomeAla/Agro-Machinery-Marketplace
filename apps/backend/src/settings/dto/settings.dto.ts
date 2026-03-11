@@ -1,23 +1,10 @@
 import { IsString, IsOptional, IsBoolean, IsNumber, IsEnum } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export enum PaymentProvider {
-  PAYSTACK = 'paystack',
-  FLUTTERWAVE = 'flutterwave',
-}
-
-export enum PaymentStatus {
-  PENDING = 'pending',
-  PROCESSING = 'processing',
-  SUCCESS = 'success',
-  FAILED = 'failed',
-  REFUNDED = 'refunded',
-}
-
 export class PaymentGatewayConfigDto {
-  @ApiProperty({ enum: PaymentProvider })
-  @IsEnum(PaymentProvider)
-  provider: PaymentProvider;
+  @ApiProperty({ example: 'PAYSTACK' })
+  @IsString()
+  provider: string;
 
   @ApiProperty()
   @IsString()
@@ -38,10 +25,10 @@ export class PaymentGatewayConfigDto {
 }
 
 export class UpdatePlatformSettingsDto {
-  @ApiPropertyOptional({ enum: PaymentProvider })
-  @IsEnum(PaymentProvider)
+  @ApiPropertyOptional({ example: 'PAYSTACK' })
+  @IsString()
   @IsOptional()
-  paymentProvider?: PaymentProvider;
+  paymentProvider?: string;
 
   @ApiPropertyOptional({ type: PaymentGatewayConfigDto })
   @IsOptional()

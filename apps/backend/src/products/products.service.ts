@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto, UpdateProductDto, ProductQueryDto } from './dto/products.dto';
 import { Role } from '@prisma/client';
 

@@ -1,6 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { UpdatePlatformSettingsDto, PaymentGatewayConfigDto, PaymentProvider } from './dto/settings.dto';
+import { PrismaService } from '../prisma/prisma.service';
+import { UpdatePlatformSettingsDto, PaymentGatewayConfigDto } from './dto/settings.dto';
+
+const PaymentProvider = {
+  PAYSTACK: 'PAYSTACK',
+  FLUTTERWAVE: 'FLUTTERWAVE'
+} as const;
 
 @Injectable()
 export class SettingsService {
@@ -20,16 +25,18 @@ export class SettingsService {
     }
 
     const { paystackSecretKey, paystackPublicKey, flutterwaveSecretKey, flutterwavePublicKey, ...publicSettings } = settings as any;
+    const paystackCfg = settings.paystackConfig as any;
+    const flutterwaveCfg = settings.flutterwaveConfig as any;
 
     return {
       ...publicSettings,
       paystackConfig: settings.paystackConfig ? {
         provider: 'paystack',
-        isActive: settings.paystackConfig?.isActive || false,
+        isActive: paystackCfg?.isActive || false,
       } : null,
       flutterwaveConfig: settings.flutterwaveConfig ? {
         provider: 'flutterwave',
-        isActive: settings.flutterwaveConfig?.isActive || false,
+        isActive: flutterwaveCfg?.isActive || false,
       } : null,
     };
   }

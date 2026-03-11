@@ -1,0 +1,13 @@
+node_modules
+dist
+.git
+.env*.local
+*.log
+coverage
+.vscode
+.idea
+*.tsbuildinfo
+node_modules
+__tests__
+*.spec.ts
+*.test.ts

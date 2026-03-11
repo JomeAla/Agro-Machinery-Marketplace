@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsNumber, IsEnum, IsArray, IsBoolean, Min, Max } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Condition, Category } from '@prisma/client';
+import { Condition } from '@prisma/client';
 
 export class CreateProductDto {
   @ApiProperty({ example: 'John Deere 5R Series Tractor' })
@@ -120,10 +120,10 @@ export class ProductQueryDto {
   @IsOptional()
   search?: string;
 
-  @ApiPropertyOptional({ enum: Category })
-  @IsEnum(Category)
+  @ApiPropertyOptional()
+  @IsString()
   @IsOptional()
-  category?: Category;
+  category?: string;
 
   @ApiPropertyOptional({ enum: Condition })
   @IsEnum(Condition)

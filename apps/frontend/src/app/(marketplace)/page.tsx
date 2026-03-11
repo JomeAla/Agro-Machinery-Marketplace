@@ -37,7 +37,7 @@ function VerifiedIcon({ className }: { className?: string }) {
   );
 }
 
-function conditionColors: Record<string, string> = {
+const conditionColors: Record<string, string> = {
   NEW: 'bg-green-100 text-green-800',
   USED: 'bg-yellow-100 text-yellow-800',
   REFURBISHED: 'bg-blue-100 text-blue-800',

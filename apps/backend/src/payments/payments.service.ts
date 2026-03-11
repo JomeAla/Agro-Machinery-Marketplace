@@ -1,8 +1,15 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { InitializePaymentDto, VerifyPaymentDto } from './dto/payments.dto';
-import { PaymentStatus, PaymentProvider } from '../settings/dto/settings.dto';
+
+const PaymentStatus = {
+  PENDING: 'pending',
+  PROCESSING: 'processing',
+  SUCCESS: 'success',
+  FAILED: 'failed',
+  REFUNDED: 'refunded',
+} as const;
 
 @Injectable()
 export class PaymentsService {
@@ -23,10 +30,10 @@ export class PaymentsService {
       throw new NotFoundException('Order not found');
     }
 
-    let: paymentUrl string;
+    let paymentUrl: string;
     let providerRef: string;
 
-    if (provider === PaymentProvider.PAYSTACK) {
+    if (provider === 'PAYSTACK') {
       const result = await this.paystackInitialize(dto, settings);
       paymentUrl = result.authorization_url;
       providerRef = result.reference;
@@ -137,7 +144,7 @@ export class PaymentsService {
     let isValid = false;
     let paymentData: any;
 
-    if (provider === PaymentProvider.PAYSTACK) {
+    if (provider === 'PAYSTACK') {
       const result = await this.paystackVerify(reference, settings);
       isValid = result.status;
       paymentData = result.data;

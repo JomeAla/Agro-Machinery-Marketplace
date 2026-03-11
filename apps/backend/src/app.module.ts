@@ -13,6 +13,9 @@ import { OrdersModule } from './orders/orders.module';
 import { SettingsModule } from './settings/settings.module';
 import { PaymentsModule } from './payments/payments.module';
 import { MessagingModule } from './messaging/messaging.module';
+import { FinancingModule } from './financing/financing.module';
+import { FreightModule } from './freight/freight.module';
+import { MaintenanceModule } from './maintenance/maintenance.module';
 
 @Module({
   imports: [
@@ -30,6 +33,9 @@ import { MessagingModule } from './messaging/messaging.module';
     SettingsModule,
     PaymentsModule,
     MessagingModule,
+    FinancingModule,
+    FreightModule,
+    MaintenanceModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

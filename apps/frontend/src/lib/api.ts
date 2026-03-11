@@ -33,6 +33,7 @@ export interface Order {
 
 export interface RFQ {
   id: string;
+  title: string;
   buyerId: string;
   buyerName: string;
   buyerCompany: string;
@@ -40,6 +41,7 @@ export interface RFQ {
   description: string;
   quantity: number;
   targetPrice?: number;
+  deliveryLocation: string;
   deadline: string;
   status: 'OPEN' | 'CLOSED';
   quotes: RFQQuote[];

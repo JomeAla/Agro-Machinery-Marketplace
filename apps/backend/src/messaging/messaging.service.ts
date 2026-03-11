@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateConversationDto, ConversationQueryDto, SendMessageDto } from './dto/messaging.dto';
 
 @Injectable()
