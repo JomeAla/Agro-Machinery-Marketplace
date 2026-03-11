@@ -1,0 +1,326 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  BUYER
+  SELLER
+  ADMIN
+}
+
+enum Condition {
+  NEW
+  USED
+  REFURBISHED
+}
+
+enum Category {
+  TRACTOR
+  HARVESTER
+  IMPLEMENT
+  SPARE_PART
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum RfqStatus {
+  OPEN
+  QUOTED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  role      Role     @default(BUYER)
+  firstName String?
+  lastName  String?
+  phone     String?
+  isVerified Boolean @default(false)
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
+  profile   Profile?
+  orders    Order[]
+  rfqs      Rfq[]
+  products  Product[]
+  buyerConversations    Conversation[] @relation("BuyerConversations")
+  sellerConversations   Conversation[] @relation("SellerConversations")
+  sentMessages          Message[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Profile {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio           String?
+  avatar        String?
+  address       String?
+  city          String?
+  state         String?
+  country       String   @default("Nigeria")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Company {
+  id                String   @id @default(uuid())
+  name              String
+  cacNumber         String?  @unique
+  cacDocument       String?
+  isVerified       Boolean  @default(false)
+  verifiedAt        DateTime?
+  description       String?
+  logo              String?
+  address           String?
+  city              String?
+  state             String?
+  website           String?
+  phone             String?
+  email             String?
+  users             User[]
+  products          Product[]
+  orders            Order[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model CategoryModel {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  slug        String    @unique
+  parentId    String?
+  parent      CategoryModel? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    CategoryModel[] @relation("CategoryHierarchy")
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id            String     @id @default(uuid())
+  title         String
+  slug          String     @unique
+  description   String     @db.Text
+  price         Decimal    @db.Decimal(12, 2)
+  condition     Condition  @default(NEW)
+  horsepower    Int?
+  warrantyMonths Int?
+  images        String[]
+  specs         Json?
+  inStock       Boolean    @default(true)
+  stockQuantity Int        @default(0)
+  categoryId    String
+  category      CategoryModel @relation(fields: [categoryId], references: [id])
+  sellerId      String
+  seller        User       @relation(fields: [sellerId], references: [id])
+  companyId     String
+  company       Company    @relation(fields: [companyId], references: [id])
+  rfqs          Rfq[]
+  orderItems    OrderItem[]
+  manuals       ProductManual[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([categoryId])
+  @@index([sellerId])
+  @@index([companyId])
+}
+
+model ProductManual {
+  id          String   @id @default(uuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  title       String
+  fileUrl     String
+  fileType    String
+  createdAt   DateTime @default(now())
+}
+
+model Order {
+  id            String      @id @default(uuid())
+  orderNumber   String      @unique
+  buyerId       String
+  buyer         User        @relation(fields: [buyerId], references: [id])
+  companyId     String
+  company       Company     @relation(fields: [companyId], references: [id])
+  status        OrderStatus @default(PENDING)
+  subtotal      Decimal     @db.Decimal(12, 2)
+  freightCost   Decimal?    @db.Decimal(12, 2)
+  total         Decimal     @db.Decimal(12, 2)
+  shippingAddress String?
+  shippingState String?
+  notes         String?
+  items         OrderItem[]
+  payment      Payment?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([buyerId])
+  @@index([companyId])
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int     @default(1)
+  unitPrice Decimal @db.Decimal(12, 2)
+  total     Decimal @db.Decimal(12, 2)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Rfq {
+  id            String     @id @default(uuid())
+  rfqNumber     String     @unique
+  buyerId       String
+  buyer         User       @relation(fields: [buyerId], references: [id])
+  productId     String?
+  product       Product?   @relation(fields: [productId], references: [id])
+  title         String
+  description   String     @db.Text
+  quantity      Int        @default(1)
+  budget        Decimal?   @db.Decimal(12, 2)
+  neededBy      DateTime?
+  deliveryState String?
+  deliveryCity  String?
+  status        RfqStatus  @default(OPEN)
+  quotes        RfqQuote[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([buyerId])
+  @@index([productId])
+}
+
+model RfqQuote {
+  id          String   @id @default(uuid())
+  rfqId       String
+  rfq         Rfq      @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  sellerId    String
+  seller      User     @relation(fields: [sellerId], references: [id])
+  price       Decimal  @db.Decimal(12, 2)
+  freightCost Decimal? @db.Decimal(12, 2)
+  notes       String?
+  isAccepted  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([rfqId])
+  @@index([sellerId])
+}
+
+model Payment {
+  id              String   @id @default(uuid())
+  orderId         String   @unique
+  order           Order    @relation(fields: [orderId], references: [id])
+  amount          Decimal  @db.Decimal(12, 2)
+  currency        String   @default("NGN")
+  provider        String
+  providerRef     String?
+  status          String   @default("pending")
+  webhookData     Json?
+  paidAt          DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+enum PaymentProvider {
+  PAYSTACK
+  FLUTTERWAVE
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model PlatformSettings {
+  id                   String          @id @default(uuid())
+  paymentProvider      PaymentProvider @default(PAYSTACK)
+  paystackConfig       Json?
+  flutterwaveConfig    Json?
+  escrowEnabled        Boolean         @default(true)
+  platformFeePercent   Float           @default(2.5)
+  supportEmail         String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+}
+
+model Escrow {
+  id            String        @id @default(uuid())
+  orderId       String        @unique
+  order         Order         @relation(fields: [orderId], references: [id])
+  amount        Decimal       @db.Decimal(12, 2)
+  status        String        @default("held")
+  provider      String
+  providerRef  String?
+  releasedAt    DateTime?
+  releasedTo    String?
+  description   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Conversation {
+  id         String    @id @default(uuid())
+  buyerId    String
+  buyer      User      @relation("BuyerConversations", fields: [buyerId], references: [id])
+  sellerId   String
+  seller     User      @relation("SellerConversations", fields: [sellerId], references: [id])
+  productId  String?
+  product    Product?  @relation(fields: [productId], references: [id])
+  messages   Message[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([productId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id])
+  content        String       @db.Text
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+  @@index([senderId])
+}

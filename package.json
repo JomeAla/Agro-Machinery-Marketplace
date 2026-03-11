@@ -1,21 +1,31 @@
 {
-  "name": "@org/source",
+  "name": "@agro-market/root",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "dev:frontend": "cd apps/frontend && npm run dev",
+    "dev:backend": "cd apps/backend && npm run start:dev",
+    "build": "nx run-many -t build --parallel",
+    "build:frontend": "cd apps/frontend && npm run build",
+    "build:backend": "cd apps/backend && npm run build",
+    "lint": "nx run-many -t lint --parallel",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "prepare": "husky install"
+  },
   "private": true,
-  "dependencies": {},
   "devDependencies": {
     "@nx/js": "22.5.1",
     "@swc-node/register": "1.11.1",
     "@swc/core": "1.15.8",
     "@swc/helpers": "0.5.18",
+    "husky": "^9.0.0",
     "nx": "22.5.1",
-    "prettier": "^2.6.2",
+    "prettier": "^3.0.0",
     "tslib": "^2.3.0",
     "typescript": "~5.9.2"
   },
   "workspaces": [
+    "apps/*",
     "packages/*"
   ]
 }
