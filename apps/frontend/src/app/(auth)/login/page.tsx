@@ -67,7 +67,12 @@ export default function LoginPage() {
       localStorage.setItem('authToken', data.accessToken);
       localStorage.setItem('user', JSON.stringify(data.user));
       
-      router.push('/');
+      const user = data.user;
+      if (user.role === 'ADMIN') {
+        router.push('/admin');
+      } else {
+        router.push('/');
+      }
       router.refresh();
     } catch (error) {
       setErrors({
