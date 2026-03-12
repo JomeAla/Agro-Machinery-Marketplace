@@ -516,3 +516,135 @@ export function exportTransactions() {
   const token = localStorage.getItem('authToken');
   window.open(`http://localhost:4000/admin/transactions/export`, '_blank');
 }
+
+// ==================== FAQ API ====================
+
+export interface FaqCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  order: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface FaqArticle {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  categoryId: string;
+  category: FaqCategory;
+  helpfulCount: number;
+  notHelpfulCount: number;
+  order: number;
+  published: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export async function getFaqCategories(): Promise<FaqCategory[]> {
+  const response = await fetchWithAuth('/faq/admin/categories');
+  if (!response.ok) throw new Error('Failed to fetch categories');
+  return response.json();
+}
+
+export async function createFaqCategory(data: { name: string; slug: string; description?: string }): Promise<FaqCategory> {
+  const response = await fetchWithAuth('/faq/admin/categories', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to create category');
+  return response.json();
+}
+
+export async function updateFaqCategory(id: string, data: { name?: string; slug?: string; description?: string; order?: number }): Promise<FaqCategory> {
+  const response = await fetchWithAuth(`/faq/admin/categories/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to update category');
+  return response.json();
+}
+
+export async function deleteFaqCategory(id: string): Promise<void> {
+  const response = await fetchWithAuth(`/faq/admin/categories/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete category');
+}
+
+export async function getFaqArticles(params?: { categoryId?: string; published?: boolean }): Promise<FaqArticle[]> {
+  const query = new URLSearchParams();
+  if (params?.categoryId) query.set('categoryId', params.categoryId);
+  if (params?.published !== undefined) query.set('published', String(params.published));
+  
+  const response = await fetchWithAuth(`/faq/admin/articles?${query}`);
+  if (!response.ok) throw new Error('Failed to fetch articles');
+  return response.json();
+}
+
+export async function createFaqArticle(data: {
+  title: string;
+  slug: string;
+  content: string;
+  categoryId: string;
+  published?: boolean;
+}): Promise<FaqArticle> {
+  const response = await fetchWithAuth('/faq/admin/articles', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to create article');
+  return response.json();
+}
+
+export async function updateFaqArticle(id: string, data: {
+  title?: string;
+  slug?: string;
+  content?: string;
+  categoryId?: string;
+  order?: number;
+  published?: boolean;
+}): Promise<FaqArticle> {
+  const response = await fetchWithAuth(`/faq/admin/articles/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to update article');
+  return response.json();
+}
+
+export async function deleteFaqArticle(id: string): Promise<void> {
+  const response = await fetchWithAuth(`/faq/admin/articles/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete article');
+}
+
+export async function getFaqArticlesPublic(): Promise<FaqArticle[]> {
+  const response = await fetch('http://localhost:4000/faq/articles');
+  if (!response.ok) throw new Error('Failed to fetch articles');
+  return response.json();
+}
+
+export async function getFaqCategoriesPublic(): Promise<FaqCategory[]> {
+  const response = await fetch('http://localhost:4000/faq/categories');
+  if (!response.ok) throw new Error('Failed to fetch categories');
+  return response.json();
+}
+
+export async function searchFaqArticles(query: string): Promise<FaqArticle[]> {
+  const response = await fetch(`http://localhost:4000/faq/articles/search?q=${encodeURIComponent(query)}`);
+  if (!response.ok) throw new Error('Failed to search articles');
+  return response.json();
+}
+
+export async function voteFaqArticle(articleId: string, helpful: boolean): Promise<void> {
+  const response = await fetchWithAuth(`/faq/articles/${articleId}/vote`, {
+    method: 'POST',
+    body: JSON.stringify({ helpful }),
+  });
+  if (!response.ok) throw new Error('Failed to vote');
+}

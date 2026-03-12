@@ -17,6 +17,7 @@ import { FinancingModule } from './financing/financing.module';
 import { FreightModule } from './freight/freight.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
 import { AdminModule } from './admin/admin.module';
+import { FaqModule } from './faq/faq.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { AdminModule } from './admin/admin.module';
     FreightModule,
     MaintenanceModule,
     AdminModule,
+    FaqModule,
   ],
   controllers: [AppController],
   providers: [AppService],
