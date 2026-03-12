@@ -15,6 +15,8 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+RUN apk add --no-cache openssl
+
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nodejs
 
@@ -29,4 +31,4 @@ EXPOSE 4000
 
 ENV PORT 4000
 
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main"]

@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -43,6 +44,13 @@ enum RfqStatus {
   EXPIRED
 }
 
+enum ProductStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FLAGGED
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -52,6 +60,7 @@ model User {
   lastName  String?
   phone     String?
   isVerified Boolean @default(false)
+  isActive   Boolean @default(true)
   companyId String?
   company   Company? @relation(fields: [companyId], references: [id])
   profile   Profile?
@@ -131,6 +140,8 @@ model Product {
   specs         Json?
   inStock       Boolean    @default(true)
   stockQuantity Int        @default(0)
+  status        ProductStatus @default(PENDING)
+  rejectionReason String?
   categoryId    String
   category      CategoryModel @relation(fields: [categoryId], references: [id])
   sellerId      String
@@ -151,6 +162,7 @@ model Product {
   @@index([categoryId])
   @@index([sellerId])
   @@index([companyId])
+  @@index([status])
 }
 
 model ProductManual {
@@ -177,6 +189,9 @@ model Order {
   shippingAddress String?
   shippingState String?
   notes         String?
+  disputeReason String?
+  disputeStatus String?     // OPEN, RESOLVED, CLOSED
+  resolvedAt    DateTime?
   items         OrderItem[]
   payment      Payment?
   escrow       Escrow?
@@ -187,6 +202,7 @@ model Order {
 
   @@index([buyerId])
   @@index([companyId])
+  @@index([status])
 }
 
 model OrderItem {

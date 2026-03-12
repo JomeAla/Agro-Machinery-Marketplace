@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { PrismaService } from './prisma/prisma.service';
+import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { CompaniesModule } from './companies/companies.module';
@@ -16,6 +16,7 @@ import { MessagingModule } from './messaging/messaging.module';
 import { FinancingModule } from './financing/financing.module';
 import { FreightModule } from './freight/freight.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { MaintenanceModule } from './maintenance/maintenance.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    PrismaModule,
     AuthModule,
     UsersModule,
     CompaniesModule,
@@ -36,8 +38,9 @@ import { MaintenanceModule } from './maintenance/maintenance.module';
     FinancingModule,
     FreightModule,
     MaintenanceModule,
+    AdminModule,
   ],
   controllers: [AppController],
-  providers: [AppService, PrismaService],
+  providers: [AppService],
 })
 export class AppModule {}

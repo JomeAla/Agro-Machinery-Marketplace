@@ -267,3 +267,182 @@ export function checkAuth(): { isAuthenticated: boolean; user: any | null } {
   
   return { isAuthenticated: !!token, user };
 }
+
+// ==================== Admin API ====================
+
+export interface AdminAnalytics {
+  totalUsers: number;
+  totalBuyers: number;
+  totalSellers: number;
+  totalOrders: number;
+  totalProducts: number;
+  pendingProducts: number;
+  activeProducts: number;
+  totalRevenue: number;
+  recentOrders: any[];
+  recentUsers: any[];
+  monthlyRevenue: { month: string; revenue: number }[];
+  categoryDistribution: { category: string; count: number }[];
+}
+
+export interface DashboardStats {
+  todayOrders: number;
+  todayRevenue: number;
+  yesterdayOrders: number;
+  pendingDisputes: number;
+  newUsersToday: number;
+  orderChange: string;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  role: 'BUYER' | 'SELLER' | 'ADMIN';
+  firstName: string | null;
+  lastName: string | null;
+  phone: string | null;
+  isVerified: boolean;
+  isActive: boolean;
+  company: any | null;
+  createdAt: string;
+}
+
+export interface AdminProduct {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'FLAGGED';
+  rejectionReason: string | null;
+  category: any;
+  seller: any;
+  company: any;
+  images: string[];
+  createdAt: string;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+export async function getAdminAnalytics(): Promise<AdminAnalytics> {
+  const response = await fetchWithAuth('/admin/analytics');
+  if (!response.ok) throw new Error('Failed to fetch analytics');
+  return response.json();
+}
+
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const response = await fetchWithAuth('/admin/dashboard-stats');
+  if (!response.ok) throw new Error('Failed to fetch dashboard stats');
+  return response.json();
+}
+
+export async function getAdminUsers(params: {
+  page?: number;
+  limit?: number;
+  role?: string;
+  isActive?: boolean;
+  search?: string;
+}): Promise<PaginatedResponse<AdminUser>> {
+  const query = new URLSearchParams();
+  if (params.page) query.set('page', params.page.toString());
+  if (params.limit) query.set('limit', params.limit.toString());
+  if (params.role) query.set('role', params.role);
+  if (params.isActive !== undefined) query.set('isActive', params.isActive.toString());
+  if (params.search) query.set('search', params.search);
+  
+  const response = await fetchWithAuth(`/admin/users?${query}`);
+  if (!response.ok) throw new Error('Failed to fetch users');
+  return response.json();
+}
+
+export async function updateUserStatus(userId: string, isActive: boolean): Promise<AdminUser> {
+  const response = await fetchWithAuth(`/admin/users/${userId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isActive }),
+  });
+  if (!response.ok) throw new Error('Failed to update user status');
+  return response.json();
+}
+
+export async function deleteUser(userId: string): Promise<void> {
+  const response = await fetchWithAuth(`/admin/users/${userId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete user');
+}
+
+export async function getAdminProducts(params: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  search?: string;
+  categoryId?: string;
+}): Promise<PaginatedResponse<AdminProduct>> {
+  const query = new URLSearchParams();
+  if (params.page) query.set('page', params.page.toString());
+  if (params.limit) query.set('limit', params.limit.toString());
+  if (params.status) query.set('status', params.status);
+  if (params.search) query.set('search', params.search);
+  if (params.categoryId) query.set('categoryId', params.categoryId);
+  
+  const response = await fetchWithAuth(`/admin/products?${query}`);
+  if (!response.ok) throw new Error('Failed to fetch products');
+  return response.json();
+}
+
+export async function approveProduct(productId: string): Promise<void> {
+  const response = await fetchWithAuth(`/admin/products/${productId}/approve`, {
+    method: 'POST',
+  });
+  if (!response.ok) throw new Error('Failed to approve product');
+}
+
+export async function rejectProduct(productId: string, reason: string): Promise<void> {
+  const response = await fetchWithAuth(`/admin/products/${productId}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+  if (!response.ok) throw new Error('Failed to reject product');
+}
+
+export async function flagProduct(productId: string, reason: string): Promise<void> {
+  const response = await fetchWithAuth(`/admin/products/${productId}/flag`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+  if (!response.ok) throw new Error('Failed to flag product');
+}
+
+export async function getAdminOrders(params: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  search?: string;
+  disputeStatus?: string;
+}): Promise<PaginatedResponse<any>> {
+  const query = new URLSearchParams();
+  if (params.page) query.set('page', params.page.toString());
+  if (params.limit) query.set('limit', params.limit.toString());
+  if (params.status) query.set('status', params.status);
+  if (params.search) query.set('search', params.search);
+  if (params.disputeStatus) query.set('disputeStatus', params.disputeStatus);
+  
+  const response = await fetchWithAuth(`/admin/orders?${query}`);
+  if (!response.ok) throw new Error('Failed to fetch orders');
+  return response.json();
+}
+
+export async function resolveDispute(orderId: string, resolution: string): Promise<void> {
+  const response = await fetchWithAuth(`/admin/orders/${orderId}/resolve-dispute`, {
+    method: 'POST',
+    body: JSON.stringify({ resolution }),
+  });
+  if (!response.ok) throw new Error('Failed to resolve dispute');
+}
