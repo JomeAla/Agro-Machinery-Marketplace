@@ -446,3 +446,73 @@ export async function resolveDispute(orderId: string, resolution: string): Promi
   });
   if (!response.ok) throw new Error('Failed to resolve dispute');
 }
+
+// ==================== Transaction Management ====================
+
+export interface Transaction {
+  id: string;
+  orderId: string;
+  amount: number;
+  currency: string;
+  provider: string;
+  providerRef: string | null;
+  status: string;
+  paidAt: Date | null;
+  createdAt: Date;
+  order: {
+    orderNumber: string;
+    buyer: { id: string; firstName: string; lastName: string; email: string };
+    company: { name: string };
+  };
+}
+
+export async function getTransactions(params: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  provider?: string;
+  search?: string;
+}): Promise<PaginatedResponse<Transaction>> {
+  const query = new URLSearchParams();
+  if (params.page) query.set('page', params.page.toString());
+  if (params.limit) query.set('limit', params.limit.toString());
+  if (params.status) query.set('status', params.status);
+  if (params.provider) query.set('provider', params.provider);
+  if (params.search) query.set('search', params.search);
+  
+  const response = await fetchWithAuth(`/admin/transactions?${query}`);
+  if (!response.ok) throw new Error('Failed to fetch transactions');
+  return response.json();
+}
+
+export async function getTransactionById(id: string): Promise<Transaction> {
+  const response = await fetchWithAuth(`/admin/transactions/${id}`);
+  if (!response.ok) throw new Error('Failed to fetch transaction');
+  return response.json();
+}
+
+export async function processRefund(transactionId: string, reason: string): Promise<void> {
+  const response = await fetchWithAuth(`/admin/transactions/${transactionId}/refund`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+  if (!response.ok) throw new Error('Failed to process refund');
+}
+
+export async function getRefunds(params: {
+  page?: number;
+  limit?: number;
+}): Promise<PaginatedResponse<Transaction>> {
+  const query = new URLSearchParams();
+  if (params.page) query.set('page', params.page.toString());
+  if (params.limit) query.set('limit', params.limit.toString());
+  
+  const response = await fetchWithAuth(`/admin/refunds?${query}`);
+  if (!response.ok) throw new Error('Failed to fetch refunds');
+  return response.json();
+}
+
+export function exportTransactions() {
+  const token = localStorage.getItem('authToken');
+  window.open(`http://localhost:4000/admin/transactions/export`, '_blank');
+}

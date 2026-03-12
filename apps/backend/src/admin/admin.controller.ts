@@ -7,7 +7,8 @@ import {
   Body, 
   Param, 
   Query,
-  UseGuards 
+  UseGuards,
+  Res
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { 
@@ -21,6 +22,7 @@ import {
 } from './dto/admin.dto';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Response } from 'express';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, AdminGuard)
@@ -110,5 +112,70 @@ export class AdminController {
     @Body() dto: ResolveDisputeDto,
   ) {
     return this.adminService.resolveDispute(id, dto);
+  }
+
+  // ==================== Transaction Management ====================
+
+  @Get('transactions')
+  async getTransactions(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @Query('provider') provider?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.adminService.getTransactions({
+      page: page ? parseInt(page) : undefined,
+      limit: limit ? parseInt(limit) : undefined,
+      status,
+      provider,
+      search,
+    });
+  }
+
+  @Get('transactions/:id')
+  async getTransactionById(@Param('id') id: string) {
+    return this.adminService.getTransactionById(id);
+  }
+
+  @Post('transactions/:id/refund')
+  async processRefund(
+    @Param('id') id: string,
+    @Body('reason') reason: string,
+  ) {
+    return this.adminService.processRefund(id, reason);
+  }
+
+  @Get('refunds')
+  async getRefundHistory(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminService.getRefundHistory({
+      page: page ? parseInt(page) : undefined,
+      limit: limit ? parseInt(limit) : undefined,
+    });
+  }
+
+  @Get('transactions/export')
+  async exportTransactions(@Res() res: Response) {
+    const transactions = await this.adminService.getTransactions({ limit: 10000 });
+    
+    const csv = [
+      ['ID', 'Order Number', 'Buyer', 'Amount', 'Provider', 'Status', 'Date'].join(','),
+      ...transactions.data.map(t => [
+        t.id,
+        t.order?.orderNumber || '',
+        t.order?.buyer?.firstName + ' ' + t.order?.buyer?.lastName || '',
+        t.amount,
+        t.provider,
+        t.status,
+        t.createdAt.toISOString(),
+      ].join(','))
+    ].join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=transactions.csv');
+    res.send(csv);
   }
 }

@@ -429,4 +429,138 @@ export class AdminService {
         : 0,
     };
   }
+
+  // ==================== Transaction Management ====================
+
+  async getTransactions(query: { page?: number; limit?: number; status?: string; provider?: string; search?: string }) {
+    const { page = 1, limit = 20, status, provider, search } = query;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    
+    if (status) {
+      where.status = status;
+    }
+    
+    if (provider) {
+      where.provider = provider;
+    }
+    
+    if (search) {
+      where.providerRef = { contains: search, mode: 'insensitive' };
+    }
+
+    const [payments, total] = await Promise.all([
+      this.prisma.payment.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: { 
+          order: { 
+            include: { 
+              buyer: { select: { id: true, firstName: true, lastName: true, email: true } },
+              company: { select: { name: true } }
+            } 
+          } 
+        },
+      }),
+      this.prisma.payment.count({ where }),
+    ]);
+
+    return {
+      data: payments,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async getTransactionById(id: string) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id },
+      include: { 
+        order: { 
+          include: { 
+            buyer: true,
+            company: true,
+            items: { include: { product: true } },
+          } 
+        } 
+      },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Transaction not found');
+    }
+
+    return payment;
+  }
+
+  async processRefund(paymentId: string, reason: string) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+
+    if (payment.status === 'REFUNDED') {
+      throw new ForbiddenException('Payment already refunded');
+    }
+
+    if (payment.status !== 'SUCCESS') {
+      throw new ForbiddenException('Can only refund successful payments');
+    }
+
+    // Update payment status to refunded
+    const updatedPayment = await this.prisma.payment.update({
+      where: { id: paymentId },
+      data: { status: 'REFUNDED' },
+    });
+
+    // Update order status
+    await this.prisma.order.update({
+      where: { id: payment.orderId },
+      data: { status: 'CANCELLED' },
+    });
+
+    return updatedPayment;
+  }
+
+  async getRefundHistory(query: { page?: number; limit?: number }) {
+    const { page = 1, limit = 20 } = query;
+    const skip = (page - 1) * limit;
+
+    const [payments, total] = await Promise.all([
+      this.prisma.payment.findMany({
+        where: { status: 'REFUNDED' },
+        skip,
+        take: limit,
+        orderBy: { updatedAt: 'desc' },
+        include: { 
+          order: { 
+            include: { 
+              buyer: { select: { id: true, firstName: true, lastName: true, email: true } },
+            } 
+          } 
+        },
+      }),
+      this.prisma.payment.count({ where: { status: 'REFUNDED' } }),
+    ]);
+
+    return {
+      data: payments,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
 }
