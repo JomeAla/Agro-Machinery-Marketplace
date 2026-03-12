@@ -123,6 +123,7 @@ model CategoryModel {
   parent      CategoryModel? @relation("CategoryHierarchy", fields: [parentId], references: [id])
   children    CategoryModel[] @relation("CategoryHierarchy")
   products    Product[]
+  promotions  CategoryPromotion[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
@@ -156,6 +157,7 @@ model Product {
   warrantyClaims       WarrantyClaim[]
   financingRequests    FinancingRequest[]
   conversations  Conversation[]
+  featuredProducts FeaturedProduct[]
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -518,4 +520,80 @@ model FaqVote {
 
   @@unique([userId, articleId])
   @@index([articleId])
+}
+
+// ==================== Promotions System ====================
+
+model DiscountCode {
+  id            String    @id @default(uuid())
+  code          String    @unique
+  description   String?
+  discountType  String    @default("PERCENTAGE") // PERCENTAGE, FIXED
+  discountValue Decimal   @db.Decimal(10, 2)
+  minOrderAmount Decimal? @db.Decimal(10, 2)
+  maxUses       Int?
+  usedCount     Int       @default(0)
+  startsAt      DateTime?
+  expiresAt     DateTime?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model FeaturedSlot {
+  id          String   @id @default(uuid())
+  name        String   // Daily, Weekly, Monthly
+  duration    Int      @default(1) // days
+  price       Decimal  @db.Decimal(10, 2)
+  isActive    Boolean  @default(true)
+  purchases   FeaturedProduct[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FeaturedProduct {
+  id        String        @id @default(uuid())
+  productId String
+  product   Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  slotId    String
+  slot      FeaturedSlot  @relation(fields: [slotId], references: [id])
+  startDate DateTime
+  endDate   DateTime
+  status    String        @default("ACTIVE") // ACTIVE, EXPIRED, CANCELLED
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([productId])
+  @@index([slotId])
+}
+
+model Banner {
+  id          String    @id @default(uuid())
+  title       String
+  subtitle    String?
+  imageUrl    String
+  linkUrl     String?
+  linkText    String?
+  position    String    @default("HOME") // HOME, CATEGORY, PRODUCT
+  startsAt    DateTime?
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model CategoryPromotion {
+  id              String        @id @default(uuid())
+  categoryId      String
+  category         CategoryModel @relation(fields: [categoryId], references: [id])
+  discountType    String        @default("PERCENTAGE")
+  discountValue   Decimal       @db.Decimal(10, 2)
+  startsAt        DateTime
+  expiresAt       DateTime
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([categoryId])
 }

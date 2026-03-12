@@ -648,3 +648,205 @@ export async function voteFaqArticle(articleId: string, helpful: boolean): Promi
   });
   if (!response.ok) throw new Error('Failed to vote');
 }
+
+// ==================== Promotions API ====================
+
+export interface DiscountCode {
+  id: string;
+  code: string;
+  description: string | null;
+  discountType: string;
+  discountValue: number;
+  minOrderAmount: number | null;
+  maxUses: number | null;
+  usedCount: number;
+  startsAt: Date | null;
+  expiresAt: Date | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface FeaturedSlot {
+  id: string;
+  name: string;
+  duration: number;
+  price: number;
+  isActive: boolean;
+}
+
+export interface Banner {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  imageUrl: string;
+  linkUrl: string | null;
+  linkText: string | null;
+  position: string;
+  startsAt: Date | null;
+  expiresAt: Date | null;
+  isActive: boolean;
+  order: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CategoryPromotion {
+  id: string;
+  categoryId: string;
+  category: { id: string; name: string };
+  discountType: string;
+  discountValue: number;
+  startsAt: Date;
+  expiresAt: Date;
+  isActive: boolean;
+}
+
+export async function getDiscountCodes(): Promise<DiscountCode[]> {
+  const response = await fetchWithAuth('/promotions/admin/discount-codes');
+  if (!response.ok) throw new Error('Failed to fetch discount codes');
+  return response.json();
+}
+
+export async function createDiscountCode(data: {
+  code: string;
+  description?: string;
+  discountType: string;
+  discountValue: number;
+  minOrderAmount?: number;
+  maxUses?: number;
+  startsAt?: string;
+  expiresAt?: string;
+}): Promise<DiscountCode> {
+  const response = await fetchWithAuth('/promotions/admin/discount-codes', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to create discount code');
+  return response.json();
+}
+
+export async function updateDiscountCode(id: string, data: any): Promise<DiscountCode> {
+  const response = await fetchWithAuth(`/promotions/admin/discount-codes/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to update discount code');
+  return response.json();
+}
+
+export async function deleteDiscountCode(id: string): Promise<void> {
+  const response = await fetchWithAuth(`/promotions/admin/discount-codes/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete discount code');
+}
+
+export async function getFeaturedSlots(): Promise<FeaturedSlot[]> {
+  const response = await fetchWithAuth('/promotions/admin/featured-slots');
+  if (!response.ok) throw new Error('Failed to fetch featured slots');
+  return response.json();
+}
+
+export async function createFeaturedSlot(data: { name: string; duration: number; price: number }): Promise<FeaturedSlot> {
+  const response = await fetchWithAuth('/promotions/admin/featured-slots', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to create featured slot');
+  return response.json();
+}
+
+export async function updateFeaturedSlot(id: string, data: any): Promise<FeaturedSlot> {
+  const response = await fetchWithAuth(`/promotions/admin/featured-slots/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to update featured slot');
+  return response.json();
+}
+
+export async function deleteFeaturedSlot(id: string): Promise<void> {
+  const response = await fetchWithAuth(`/promotions/admin/featured-slots/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete featured slot');
+}
+
+export async function getBanners(): Promise<Banner[]> {
+  const response = await fetchWithAuth('/promotions/admin/banners');
+  if (!response.ok) throw new Error('Failed to fetch banners');
+  return response.json();
+}
+
+export async function createBanner(data: {
+  title: string;
+  subtitle?: string;
+  imageUrl: string;
+  linkUrl?: string;
+  linkText?: string;
+  position?: string;
+  startsAt?: string;
+  expiresAt?: string;
+  order?: number;
+}): Promise<Banner> {
+  const response = await fetchWithAuth('/promotions/admin/banners', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to create banner');
+  return response.json();
+}
+
+export async function updateBanner(id: string, data: any): Promise<Banner> {
+  const response = await fetchWithAuth(`/promotions/admin/banners/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to update banner');
+  return response.json();
+}
+
+export async function deleteBanner(id: string): Promise<void> {
+  const response = await fetchWithAuth(`/promotions/admin/banners/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete banner');
+}
+
+export async function getCategoryPromotions(): Promise<CategoryPromotion[]> {
+  const response = await fetchWithAuth('/promotions/admin/category-promotions');
+  if (!response.ok) throw new Error('Failed to fetch category promotions');
+  return response.json();
+}
+
+export async function createCategoryPromotion(data: {
+  categoryId: string;
+  discountType: string;
+  discountValue: number;
+  startsAt: string;
+  expiresAt: string;
+}): Promise<CategoryPromotion> {
+  const response = await fetchWithAuth('/promotions/admin/category-promotions', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to create category promotion');
+  return response.json();
+}
+
+export async function updateCategoryPromotion(id: string, data: any): Promise<CategoryPromotion> {
+  const response = await fetchWithAuth(`/promotions/admin/category-promotions/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to update category promotion');
+  return response.json();
+}
+
+export async function deleteCategoryPromotion(id: string): Promise<void> {
+  const response = await fetchWithAuth(`/promotions/admin/category-promotions/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete category promotion');
+}

@@ -18,6 +18,7 @@ import { FreightModule } from './freight/freight.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
 import { AdminModule } from './admin/admin.module';
 import { FaqModule } from './faq/faq.module';
+import { PromotionsModule } from './promotions/promotions.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { FaqModule } from './faq/faq.module';
     MaintenanceModule,
     AdminModule,
     FaqModule,
+    PromotionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
