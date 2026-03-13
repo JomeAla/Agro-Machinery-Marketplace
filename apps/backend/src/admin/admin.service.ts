@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import * as bcrypt from 'bcrypt';
 import { 
   AdminUserQueryDto, 
   UpdateUserStatusDto,
@@ -109,6 +110,51 @@ export class AdminService {
   }
 
   // ==================== User Management ====================
+
+  async createUser(data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    role: 'BUYER' | 'SELLER' | 'ADMIN';
+  }) {
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: data.email },
+    });
+
+    if (existingUser) {
+      throw new BadRequestException('User with this email already exists');
+    }
+
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+
+    const user = await this.prisma.user.create({
+      data: {
+        email: data.email,
+        password: hashedPassword,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+        role: data.role,
+        isActive: true,
+        isVerified: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        role: true,
+        isActive: true,
+        isVerified: true,
+        createdAt: true,
+      },
+    });
+
+    return user;
+  }
 
   async getUsers(query: AdminUserQueryDto) {
     const { page = 1, limit = 20, role, isActive, search } = query;

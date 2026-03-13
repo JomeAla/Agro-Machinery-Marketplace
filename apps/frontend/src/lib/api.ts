@@ -357,12 +357,28 @@ export async function getAdminUsers(params: {
   if (params.isActive !== undefined) query.set('isActive', params.isActive.toString());
   if (params.search) query.set('search', params.search);
   
-  const response = await fetchWithAuth(`/admin/users?${query}`);
-  if (!response.ok) throw new Error('Failed to fetch users');
-  return response.json();
-}
+   const response = await fetchWithAuth(`/admin/users?${query}`);
+   if (!response.ok) throw new Error('Failed to fetch users');
+   return response.json();
+ }
 
-export async function updateUserStatus(userId: string, isActive: boolean): Promise<AdminUser> {
+ export async function createUser(data: {
+   email: string;
+   password: string;
+   firstName: string;
+   lastName: string;
+   phone?: string;
+   role: 'BUYER' | 'SELLER' | 'ADMIN';
+ }): Promise<AdminUser> {
+   const response = await fetchWithAuth('/admin/users', {
+     method: 'POST',
+     body: JSON.stringify(data),
+   });
+   if (!response.ok) throw new Error('Failed to create user');
+   return response.json();
+ }
+
+ export async function updateUserStatus(userId: string, isActive: boolean): Promise<AdminUser> {
   const response = await fetchWithAuth(`/admin/users/${userId}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ isActive }),

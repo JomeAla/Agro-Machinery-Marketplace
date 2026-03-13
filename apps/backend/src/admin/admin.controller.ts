@@ -48,6 +48,18 @@ export class AdminController {
     return this.adminService.getUsers(query);
   }
 
+  @Post('users')
+  async createUser(@Body() data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    role: 'BUYER' | 'SELLER' | 'ADMIN';
+  }) {
+    return this.adminService.createUser(data);
+  }
+
   @Get('users/:id')
   async getUserById(@Param('id') id: string) {
     return this.adminService.getUserById(id);

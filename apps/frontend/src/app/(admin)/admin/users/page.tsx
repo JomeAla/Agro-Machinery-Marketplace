@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getAdminUsers, updateUserStatus, deleteUser, AdminUser, PaginatedResponse } from '@/lib/api';
+import { getAdminUsers, updateUserStatus, deleteUser, createUser, AdminUser, PaginatedResponse } from '@/lib/api';
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -9,6 +9,16 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ role: '', search: '' });
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newUser, setNewUser] = useState({
+    email: '',
+    password: '',
+    firstName: '',
+    lastName: '',
+    phone: '',
+    role: 'BUYER' as 'BUYER' | 'SELLER' | 'ADMIN',
+  });
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -60,6 +70,33 @@ export default function AdminUsersPage() {
     }
   }
 
+  async function handleCreateUser() {
+    if (!newUser.email || !newUser.password || !newUser.firstName || !newUser.lastName) {
+      alert('Please fill in all required fields');
+      return;
+    }
+    setCreating(true);
+    try {
+      await createUser(newUser);
+      setShowCreateModal(false);
+      setNewUser({
+        email: '',
+        password: '',
+        firstName: '',
+        lastName: '',
+        phone: '',
+        role: 'BUYER',
+      });
+      fetchUsers();
+      alert('User created successfully!');
+    } catch (error) {
+      console.error('Failed to create user:', error);
+      alert('Failed to create user');
+    } finally {
+      setCreating(false);
+    }
+  }
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -82,6 +119,12 @@ export default function AdminUsersPage() {
             <option value="SELLER">Sellers</option>
             <option value="ADMIN">Admins</option>
           </select>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          >
+            Add User
+          </button>
         </div>
       </div>
 
@@ -206,6 +249,95 @@ export default function AdminUsersPage() {
           >
             Next
           </button>
+        </div>
+      )}
+
+      {/* Create User Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold mb-4">Create New User</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Email *</label>
+                <input
+                  type="email"
+                  value={newUser.email}
+                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                  className="w-full px-4 py-2 border rounded"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Password *</label>
+                <input
+                  type="password"
+                  value={newUser.password}
+                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  className="w-full px-4 py-2 border rounded"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">First Name *</label>
+                  <input
+                    type="text"
+                    value={newUser.firstName}
+                    onChange={(e) => setNewUser({ ...newUser, firstName: e.target.value })}
+                    className="w-full px-4 py-2 border rounded"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Last Name *</label>
+                  <input
+                    type="text"
+                    value={newUser.lastName}
+                    onChange={(e) => setNewUser({ ...newUser, lastName: e.target.value })}
+                    className="w-full px-4 py-2 border rounded"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Phone</label>
+                <input
+                  type="tel"
+                  value={newUser.phone}
+                  onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
+                  className="w-full px-4 py-2 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Role *</label>
+                <select
+                  value={newUser.role}
+                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value as 'BUYER' | 'SELLER' | 'ADMIN' })}
+                  className="w-full px-4 py-2 border rounded"
+                >
+                  <option value="BUYER">Buyer</option>
+                  <option value="SELLER">Seller</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="px-4 py-2 border rounded"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateUser}
+                disabled={creating}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                {creating ? 'Creating...' : 'Create User'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
