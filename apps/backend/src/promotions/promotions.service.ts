@@ -81,7 +81,7 @@ export class PromotionsService {
     if (discount.expiresAt && new Date() > discount.expiresAt) throw new BadRequestException('Discount code has expired');
     if (discount.startsAt && new Date() < discount.startsAt) throw new BadRequestException('Discount code is not yet active');
     if (discount.maxUses && discount.usedCount >= discount.maxUses) throw new BadRequestException('Discount code usage limit reached');
-    if (discount.minOrderAmount && orderAmount < discount.minOrderAmount) throw new BadRequestException(`Minimum order amount is ₦${discount.minOrderAmount}`);
+    if (discount.minOrderAmount && orderAmount < Number(discount.minOrderAmount)) throw new BadRequestException(`Minimum order amount is ₦${discount.minOrderAmount}`);
 
     let discountAmount = 0;
     if (discount.discountType === 'PERCENTAGE') {
