@@ -19,6 +19,7 @@ import { MaintenanceModule } from './maintenance/maintenance.module';
 import { AdminModule } from './admin/admin.module';
 import { FaqModule } from './faq/faq.module';
 import { PromotionsModule } from './promotions/promotions.module';
+import { SupportModule } from './support/support.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { PromotionsModule } from './promotions/promotions.module';
     AdminModule,
     FaqModule,
     PromotionsModule,
+    SupportModule,
   ],
   controllers: [AppController],
   providers: [AppService],

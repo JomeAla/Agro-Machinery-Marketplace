@@ -651,6 +651,110 @@ export async function getFaqCategoriesPublic(): Promise<FaqCategory[]> {
   return response.json();
 }
 
+// Support Ticket Types
+export interface SupportTicket {
+  id: string;
+  userId: string;
+  user?: {
+    id: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+  };
+  category: string;
+  subject: string;
+  description: string;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  assignedTo?: string;
+  replies: SupportReply[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SupportReply {
+  id: string;
+  ticketId: string;
+  userId: string;
+  user?: {
+    id: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+  };
+  message: string;
+  isAdmin: boolean;
+  createdAt: Date;
+}
+
+export interface SupportTicketStats {
+  total: number;
+  open: number;
+  inProgress: number;
+  resolved: number;
+  closed: number;
+}
+
+export async function getSupportTickets(params?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  priority?: string;
+  category?: string;
+  search?: string;
+}): Promise<{ tickets: SupportTicket[]; total: number; page: number; limit: number }> {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.status) query.set('status', params.status);
+  if (params?.priority) query.set('priority', params.priority);
+  if (params?.category) query.set('category', params.category);
+  if (params?.search) query.set('search', params.search);
+
+  const response = await fetchWithAuth(`/support/admin/tickets?${query}`);
+  if (!response.ok) throw new Error('Failed to fetch tickets');
+  return response.json();
+}
+
+export async function getSupportTicketById(id: string): Promise<SupportTicket> {
+  const response = await fetchWithAuth(`/support/admin/tickets/${id}`);
+  if (!response.ok) throw new Error('Failed to fetch ticket');
+  return response.json();
+}
+
+export async function updateSupportTicketStatus(id: string, status: string): Promise<SupportTicket> {
+  const response = await fetchWithAuth(`/support/admin/tickets/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+  if (!response.ok) throw new Error('Failed to update ticket status');
+  return response.json();
+}
+
+export async function assignSupportTicket(id: string, assignedTo: string): Promise<SupportTicket> {
+  const response = await fetchWithAuth(`/support/admin/tickets/${id}/assign`, {
+    method: 'PATCH',
+    body: JSON.stringify({ assignedTo }),
+  });
+  if (!response.ok) throw new Error('Failed to assign ticket');
+  return response.json();
+}
+
+export async function replyToSupportTicket(id: string, message: string): Promise<SupportReply> {
+  const response = await fetchWithAuth(`/support/admin/tickets/${id}/replies`, {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  });
+  if (!response.ok) throw new Error('Failed to reply to ticket');
+  return response.json();
+}
+
+export async function getSupportTicketStats(): Promise<SupportTicketStats> {
+  const response = await fetchWithAuth('/support/admin/stats');
+  if (!response.ok) throw new Error('Failed to fetch ticket stats');
+  return response.json();
+}
+
 export async function searchFaqArticles(query: string): Promise<FaqArticle[]> {
   const response = await fetch(`http://localhost:4000/faq/articles/search?q=${encodeURIComponent(query)}`);
   if (!response.ok) throw new Error('Failed to search articles');

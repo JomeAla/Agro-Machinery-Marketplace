@@ -33,10 +33,12 @@ export class SettingsService {
       paystackConfig: settings.paystackConfig ? {
         provider: 'paystack',
         isActive: paystackCfg?.isActive || false,
+        secretKey: paystackCfg?.secretKey || null,
       } : null,
       flutterwaveConfig: settings.flutterwaveConfig ? {
         provider: 'flutterwave',
         isActive: flutterwaveCfg?.isActive || false,
+        secretKey: flutterwaveCfg?.secretKey || null,
       } : null,
     };
   }

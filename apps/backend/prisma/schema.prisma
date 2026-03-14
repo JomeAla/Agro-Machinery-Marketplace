@@ -74,6 +74,8 @@ model User {
   rfqQuotes            RfqQuote[]
   freightQuotes        FreightQuote[]
   warrantyClaims       WarrantyClaim[]
+  supportTickets       SupportTicket[]
+  supportReplies       SupportReply[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -596,4 +598,66 @@ model CategoryPromotion {
   updatedAt       DateTime      @updatedAt
 
   @@index([categoryId])
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketCategory {
+  ACCOUNT
+  ORDER
+  PAYMENT
+  PRODUCT
+  SHIPPING
+  REFUND
+  VERIFICATION
+  TECHNICAL
+  IMPORT_PRODUCTS
+  OTHER
+}
+
+model SupportTicket {
+  id          String        @id @default(uuid())
+  ticketNumber String       @unique
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  category    TicketCategory
+  subject     String
+  description String        @db.Text
+  status      TicketStatus  @default(OPEN)
+  priority    TicketPriority @default(MEDIUM)
+  assignedTo  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  replies     SupportReply[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([category])
+}
+
+model SupportReply {
+  id          String        @id @default(uuid())
+  ticketId    String
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  message     String        @db.Text
+  isAdminReply Boolean     @default(false)
+  createdAt   DateTime      @default(now())
+
+  @@index([ticketId])
+  @@index([userId])
 }
