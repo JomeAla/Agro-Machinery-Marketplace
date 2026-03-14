@@ -2,12 +2,14 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm install --include=dev
 
 COPY prisma ./prisma
 
+RUN npx prisma generate
+
 COPY . .
-RUN npm run build || true
+RUN npm run build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -30,4 +32,4 @@ EXPOSE 4000
 
 ENV PORT 4000
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]
