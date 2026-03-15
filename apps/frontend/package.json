@@ -1,7 +1,10 @@
 {
-  "name": "@agro-market/frontend",
-  "version": "0.0.1",
-  "private": true,
+  "name": "@jomeala/agro-market-frontend",
+  "version": "1.0.0",
+  "private": false,
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

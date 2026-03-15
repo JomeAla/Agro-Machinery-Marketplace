@@ -1,8 +1,11 @@
 {
-  "name": "@agro-market/backend",
-  "version": "0.0.1",
+  "name": "@jomeala/agro-market-backend",
+  "version": "1.0.0",
   "description": "Agro Machinery B2B Marketplace Backend API",
-  "private": true,
+  "private": false,
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
   "scripts": {
     "build": "nest build",
     "start": "nest start",
