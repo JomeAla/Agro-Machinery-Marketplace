@@ -1,12 +1,9 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
-
 export const metadata: Metadata = {
-  title: 'Agro Market - Agricultural Machinery B2B Marketplace',
-  description: 'Connect with verified sellers of agricultural machinery in Nigeria. Find tractors, harvesters, implements, and spare parts.',
+  title: 'Agro Market — Agricultural Machinery B2B Marketplace',
+  description: "Nigeria's premier B2B marketplace for agricultural machinery. Connect with verified sellers of tractors, harvesters, implements, and spare parts.",
 };
 
 export default function RootLayout({
@@ -16,7 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className="font-sans antialiased">{children}</body>
     </html>
   );
 }
