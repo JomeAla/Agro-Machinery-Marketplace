@@ -971,3 +971,108 @@ export async function deleteCategoryPromotion(id: string): Promise<void> {
   });
   if (!response.ok) throw new Error('Failed to delete category promotion');
 }
+
+// ========== ALIEXPRESS DROPSHIPPING ==========
+
+export async function getAliExpressAuthStatus(): Promise<{ connected: boolean }> {
+  const response = await fetchWithAuth('/aliexpress/auth/status');
+  if (!response.ok) throw new Error('Failed to check AliExpress status');
+  return response.json();
+}
+
+export async function getAliExpressAuthUrl(): Promise<{ connected: boolean; authUrl?: string; message?: string }> {
+  const response = await fetchWithAuth('/aliexpress/auth/url');
+  if (!response.ok) throw new Error('Failed to get auth URL');
+  return response.json();
+}
+
+export async function searchAliExpress(params: {
+  keyword: string;
+  page?: number;
+  pageSize?: number;
+  currency?: string;
+  shipTo?: string;
+  minPrice?: number;
+  maxPrice?: number;
+}): Promise<{ products: any[]; totalResults: number; page: number; pageSize: number }> {
+  const response = await fetchWithAuth('/aliexpress/search', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Search failed');
+  }
+  return response.json();
+}
+
+export async function getAliExpressProduct(id: string): Promise<any> {
+  const response = await fetchWithAuth(`/aliexpress/products/${id}`);
+  if (!response.ok) throw new Error('Failed to fetch product');
+  return response.json();
+}
+
+export async function importAliExpressProducts(productIds: string[], categoryId?: string): Promise<{
+  imported: any[];
+  failed: { productId: string; reason: string }[];
+}> {
+  const response = await fetchWithAuth('/aliexpress/import', {
+    method: 'POST',
+    body: JSON.stringify({ productIds, categoryId }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Import failed');
+  }
+  return response.json();
+}
+
+export async function getDropshipDrafts(page?: number, limit?: number): Promise<{
+  data: any[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}> {
+  const params = new URLSearchParams();
+  if (page) params.set('page', page.toString());
+  if (limit) params.set('limit', limit.toString());
+
+  const response = await fetchWithAuth(`/aliexpress/drafts?${params.toString()}`);
+  if (!response.ok) throw new Error('Failed to fetch drafts');
+  return response.json();
+}
+
+export async function updateDropshipDraft(id: string, data: {
+  title?: string;
+  description?: string;
+  price?: number;
+  images?: string[];
+  categoryId?: string;
+  inStock?: boolean;
+}): Promise<any> {
+  const response = await fetchWithAuth(`/aliexpress/drafts/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to update draft');
+  }
+  return response.json();
+}
+
+export async function publishDropshipDraft(id: string): Promise<any> {
+  const response = await fetchWithAuth(`/aliexpress/drafts/${id}/publish`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to publish');
+  }
+  return response.json();
+}
+
+export async function deleteDropshipDraft(id: string): Promise<void> {
+  const response = await fetchWithAuth(`/aliexpress/drafts/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete draft');
+}

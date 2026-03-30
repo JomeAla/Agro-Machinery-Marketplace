@@ -76,6 +76,7 @@ model User {
   warrantyClaims       WarrantyClaim[]
   supportTickets       SupportTicket[]
   supportReplies       SupportReply[]
+  dropshipProducts     DropshipProduct[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -126,6 +127,7 @@ model CategoryModel {
   children    CategoryModel[] @relation("CategoryHierarchy")
   products    Product[]
   promotions  CategoryPromotion[]
+  dropshipProducts DropshipProduct[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
@@ -660,4 +662,61 @@ model SupportReply {
 
   @@index([ticketId])
   @@index([userId])
+}
+
+// ========== ALIEXPRESS DROPSHIPPING ==========
+
+enum DropshipStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model AliExpressToken {
+  id            String   @id @default(uuid())
+  accessToken   String   @db.Text
+  refreshToken  String   @db.Text
+  userId        String   @db.Text
+  sellerId      String?
+  account       String?
+  expiresAt     DateTime
+  refreshExpiresAt DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model DropshipProduct {
+  id                   String        @id @default(uuid())
+  aliexpressId         String        @unique
+  aliexpressUrl        String
+  originalTitle        String
+  originalPrice        Decimal       @db.Decimal(12, 2)
+  originalImages       String[]
+  originalDescription  String        @db.Text
+
+  // Admin-editable fields
+  title                String
+  slug                 String        @unique
+  description          String        @db.Text
+  price                Decimal       @db.Decimal(12, 2)
+  markupPrice          Decimal       @db.Decimal(12, 2)
+  images               String[]
+  specs                Json?
+  inStock              Boolean       @default(true)
+  stockQuantity        Int           @default(0)
+  condition            Condition     @default(NEW)
+  categoryId           String
+  category             CategoryModel @relation(fields: [categoryId], references: [id])
+
+  status               DropshipStatus @default(DRAFT)
+  adminId              String
+  admin                User          @relation(fields: [adminId], references: [id])
+
+  publishedProductId   String?       @unique
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  @@index([status])
+  @@index([adminId])
+  @@index([categoryId])
 }

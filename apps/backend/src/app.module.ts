@@ -20,6 +20,7 @@ import { AdminModule } from './admin/admin.module';
 import { FaqModule } from './faq/faq.module';
 import { PromotionsModule } from './promotions/promotions.module';
 import { SupportModule } from './support/support.module';
+import { AliexpressModule } from './aliexpress/aliexpress.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { SupportModule } from './support/support.module';
     FaqModule,
     PromotionsModule,
     SupportModule,
+    AliexpressModule,
   ],
   controllers: [AppController],
   providers: [AppService],
