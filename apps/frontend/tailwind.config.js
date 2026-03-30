@@ -7,24 +7,35 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        cream: {
-          DEFAULT: '#FDFBF7',
-          dark: '#F5F0E8',
+        dark: {
+          DEFAULT: '#0a0f0d',
+          50: '#f0f4f1',
+          100: '#131f19',
+          200: '#1a2c24',
+          300: '#162219',
+        },
+        accent: {
+          DEFAULT: '#00e676',
+          dim: '#00c853',
+          glow: 'rgba(0, 230, 118, 0.15)',
+        },
+        gold: {
+          DEFAULT: '#f5c842',
+          dim: '#d4a933',
         },
         forest: {
           DEFAULT: '#1B4332',
           light: '#2D6A4F',
           muted: '#40916C',
-          50: '#f0fdf4',
-          100: '#dcfce7',
         },
         earth: {
           DEFAULT: '#8B6F47',
           light: '#C9A96E',
         },
-        charcoal: '#1A1A1A',
-        slate: '#4A4A4A',
-        mist: '#E8E4DC',
+        cream: {
+          DEFAULT: '#faf8f5',
+          dark: '#f0ece4',
+        },
         primary: {
           50: '#f0fdf4',
           100: '#dcfce7',
@@ -41,13 +52,6 @@ module.exports = {
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
         display: ['"Playfair Display"', 'Georgia', 'serif'],
-      },
-      borderRadius: {
-        '4xl': '2rem',
-        '5xl': '2.5rem',
-      },
-      transitionTimingFunction: {
-        'premium': 'cubic-bezier(0.32, 0.72, 0, 1)',
       },
     },
   },
