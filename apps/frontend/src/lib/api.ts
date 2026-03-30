@@ -188,9 +188,10 @@ export async function getProducts(filters?: {
 }): Promise<{ products: Product[]; total: number; page: number; totalPages: number }> {
   const params = new URLSearchParams();
   if (filters) {
+    const keyMap: Record<string, string> = { minHp: 'minHorsepower', maxHp: 'maxHorsepower' };
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== '') {
-        params.append(key, String(value));
+        params.append(keyMap[key] || key, String(value));
       }
     });
   }

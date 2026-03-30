@@ -6,10 +6,8 @@ A B2B SaaS Marketplace for Agricultural Machinery in Nigeria, connecting buyers 
 
 - **Frontend:** Next.js 14, React, TypeScript, TailwindCSS
 - **Backend:** NestJS, TypeScript
-- **Database:** PostgreSQL 16, Prisma ORM
-- **Caching:** Redis
+- **Database:** PostgreSQL, Prisma ORM
 - **Payments:** Paystack / Flutterwave APIs (B2B Escrow support)
-- **Infrastructure:** Docker, Docker Compose, Nginx
 
 ## Project Structure
 
@@ -18,10 +16,8 @@ agro-market/
 ├── apps/
 │   ├── frontend/          # Next.js frontend application
 │   └── backend/           # NestJS backend API
-├── docker-compose.yml     # Production Docker configuration
-├── docker-compose.dev.yml # Development Docker configuration
-├── prisma/
-│   └── schema.prisma      # Database schema
+├── start-backend.bat      # Windows script to start backend
+├── start-frontend.bat     # Windows script to start frontend
 └── README.md              # Main documentation
 ```
 
@@ -77,9 +73,7 @@ agro-market/
 ### Prerequisites
 
 - Node.js 18+
-- Docker & Docker Compose
-- PostgreSQL 16 (or use Docker)
-- Redis (or use Docker)
+- PostgreSQL (running locally on port 5432)
 
 ### Installation
 
@@ -96,67 +90,51 @@ cd apps/backend
 npm install
 
 # Frontend
-cd apps/frontend
+cd ../frontend
 npm install
 ```
 
 3. Configure environment variables:
 ```bash
-# Backend
-cp apps/backend/.env.example apps/backend/.env
-# Edit .env with your database URL and other configs
+# Backend .env is already configured for local PostgreSQL
+# Edit apps/backend/.env if your PostgreSQL credentials differ
 ```
 
-### Running with Docker
+### Running the Application
 
-#### Production Mode
-```bash
-# Build and start all containers
-docker-compose up -d --build
+#### Quick Start (Windows)
 
-# View logs
-docker-compose logs -f
+Double-click the batch files in the project root:
+- `start-backend.bat` — starts the backend on port 4000
+- `start-frontend.bat` — starts the frontend on port 3000
 
-# Stop containers
-docker-compose down
-```
+#### Manual Start
 
-#### Development Mode
-```bash
-docker-compose -f docker-compose.dev.yml up -d
-```
-
-### Running without Docker
-
-#### Backend
+**Backend:**
 ```bash
 cd apps/backend
-npm run start:dev
+npx ts-node src/main.ts
 ```
 
-#### Frontend
+**Frontend:**
 ```bash
 cd apps/frontend
 npm run dev
 ```
 
-### Database Migrations
+### Database Setup
 
 ```bash
 cd apps/backend
+
+# Generate Prisma client
+npx prisma generate
+
+# Run migrations
 npx prisma migrate deploy
-# or for development
-npx prisma migrate dev
-```
 
-### Database Seeding
-
-```bash
 # Seed admin user
 npx ts-node prisma/seed-admin.ts
-
-# Seed sample data
-npx ts-node prisma/seed.ts
 ```
 
 ## Admin Panel
@@ -164,8 +142,8 @@ npx ts-node prisma/seed.ts
 Access the admin panel at `/admin` with an admin account.
 
 ### Default Admin Credentials
-- Email: admin@agromarket.com
-- Password: Admin@123
+- Email: `admin@agromarket.com`
+- Password: `Admin@123`
 
 ### Admin Features
 
@@ -183,93 +161,30 @@ Access the admin panel at `/admin` with an admin account.
 
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:4000
-- PostgreSQL: localhost:5433
-- Redis: localhost:6380
-
-## Docker Configuration
-
-### Build Issues and Troubleshooting
-
-If you encounter Docker build issues, here's what was fixed:
-
-#### 1. .dockerignore
-The `dist` folder must NOT be excluded from Docker build context:
-```
-# CORRECT - dist is NOT excluded
-node_modules
-.git
-.env*.local
-coverage
-.vscode
-.idea
-*.log
-__tests__
-*.spec.ts
-*.test.ts
-```
-
-#### 2. Prisma Binary Targets
-Updated in `prisma/schema.prisma` to support multiple platforms:
-```prisma
-generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "linux-musl", "linux-musl-openssl-3.0.x", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
-}
-```
-
-#### 3. Dockerfile
-Must include dev dependencies:
-```dockerfile
-RUN npm install --include=dev
-```
-
-#### 4. Common Issues
-- **Port already in use**: Stop any local processes using ports 3000, 4000, 5433, 6380
-- **Prisma generate fails**: Ensure network connectivity for downloading Prisma engines
-- **Module not found**: Verify `npm install --include=dev` is used in Dockerfile
-- **Build timeout**: Increase Docker Desktop resources (CPU, Memory)
+- PostgreSQL: localhost:5432
 
 ## API Documentation
 
-For comprehensive API documentation, see [API.md](API.md)
+For comprehensive API documentation, see [API.md](API.md).
+Swagger docs available at http://localhost:4000/api/docs when backend is running.
 
 ## Environment Variables
 
-### Backend (.env)
+### Backend (apps/backend/.env)
 
 ```env
-DATABASE_URL=postgresql://user:password@localhost:5433/agro_market
-REDIS_HOST=localhost
-REDIS_PORT=6380
-JWT_SECRET=your-secret-key
+DATABASE_URL=postgresql://postgres:password@localhost:5432/agro_market
+JWT_SECRET=agro-market-dev-secret-key-2024
 JWT_EXPIRES_IN=7d
 NODE_ENV=development
 PORT=4000
 FRONTEND_URL=http://localhost:3000
 ```
 
-### Frontend (.env.local)
+### Frontend (apps/frontend/.env.local)
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:4000
-```
-
-## Deployment
-
-### Docker Production Build
-
-```bash
-# Build images
-docker-compose build --no-cache
-
-# Start containers
-docker-compose up -d
-
-# Check status
-docker-compose ps
-
-# View logs
-docker-compose logs -f backend
 ```
 
 ## License

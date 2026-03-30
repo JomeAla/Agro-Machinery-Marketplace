@@ -1,5 +1,6 @@
 import { IsString, IsOptional, IsNumber, IsEnum, IsArray, IsBoolean, Min, Max } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import { Condition } from '@prisma/client';
 
 export class CreateProductDto {
@@ -131,31 +132,37 @@ export class ProductQueryDto {
   condition?: Condition;
 
   @ApiPropertyOptional({ example: 1000000 })
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   minPrice?: number;
 
   @ApiPropertyOptional({ example: 50000000 })
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   maxPrice?: number;
 
   @ApiPropertyOptional({ example: 50 })
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   minHorsepower?: number;
 
   @ApiPropertyOptional({ example: 500 })
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   maxHorsepower?: number;
 
   @ApiPropertyOptional({ example: 1 })
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   page?: number;
 
   @ApiPropertyOptional({ example: 12 })
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   limit?: number;

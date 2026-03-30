@@ -199,7 +199,7 @@ export default function MarketplaceHomePage() {
                   >
                     <div className="text-4xl mb-3">{Object.values(categoryIcons)[idx] || '🔩'}</div>
                     <h3 className="font-medium text-gray-900 group-hover:text-primary-700">{cat}</h3>
-                    <p className="text-sm text-gray-500 mt-1">{Math.floor(Math.random() * 100) + 10} items</p>
+                    <p className="text-sm text-gray-500 mt-1">0 items</p>
                   </Link>
                 ))}
               </>
