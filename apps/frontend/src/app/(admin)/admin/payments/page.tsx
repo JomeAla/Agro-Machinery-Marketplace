@@ -169,7 +169,7 @@ export default function AdminPaymentsPage() {
                 type="text"
                 value={formData.paystackPublicKey}
                 onChange={(e) => setFormData({ ...formData, paystackPublicKey: e.target.value })}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white"
                 placeholder="pk_..."
               />
             </div>
@@ -181,7 +181,7 @@ export default function AdminPaymentsPage() {
                 type="password"
                 value={formData.paystackSecretKey}
                 onChange={(e) => setFormData({ ...formData, paystackSecretKey: e.target.value })}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white"
                 placeholder="sk_..."
               />
             </div>
@@ -231,7 +231,7 @@ export default function AdminPaymentsPage() {
                 type="text"
                 value={formData.flutterwavePublicKey}
                 onChange={(e) => setFormData({ ...formData, flutterwavePublicKey: e.target.value })}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white"
                 placeholder="FLWPUBK-..."
               />
             </div>
@@ -243,7 +243,7 @@ export default function AdminPaymentsPage() {
                 type="password"
                 value={formData.flutterwaveSecretKey}
                 onChange={(e) => setFormData({ ...formData, flutterwaveSecretKey: e.target.value })}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white"
                 placeholder="FLWSECK-..."
               />
             </div>
@@ -277,13 +277,13 @@ export default function AdminPaymentsPage() {
             <select
               value={formData.paymentProvider}
               onChange={(e) => setFormData({ ...formData, paymentProvider: e.target.value })}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white"
             >
               <option value="PAYSTACK">Paystack</option>
               <option value="FLUTTERWAVE">Flutterwave</option>
             </select>
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Platform Fee (%)
@@ -295,7 +295,7 @@ export default function AdminPaymentsPage() {
               max="10"
               value={formData.platformFeePercent}
               onChange={(e) => setFormData({ ...formData, platformFeePercent: parseFloat(e.target.value) })}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white"
             />
           </div>
           

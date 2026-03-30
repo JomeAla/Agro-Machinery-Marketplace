@@ -55,7 +55,7 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 text-gray-900">
       {/* Top Navigation */}
       <nav className="bg-green-700 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
