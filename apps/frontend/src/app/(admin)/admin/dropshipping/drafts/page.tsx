@@ -219,15 +219,15 @@ export default function DraftsPage() {
                       <div className="mt-3 grid grid-cols-4 gap-4 text-sm">
                         <div>
                           <span className="text-gray-500">Original Price:</span>
-                          <p className="font-medium text-gray-700">${draft.originalPrice?.toFixed(2)}</p>
+                          <p className="font-medium text-gray-700">${Number(draft.originalPrice || 0).toFixed(2)}</p>
                         </div>
                         <div>
                           <span className="text-gray-500">Markup (×1.5):</span>
-                          <p className="font-medium text-gray-700">${draft.markupPrice?.toFixed(2)}</p>
+                          <p className="font-medium text-gray-700">${Number(draft.markupPrice || 0).toFixed(2)}</p>
                         </div>
                         <div>
                           <span className="text-gray-500">Selling Price:</span>
-                          <p className="font-semibold text-green-600">₦{draft.price?.toLocaleString()}</p>
+                          <p className="font-semibold text-green-600">₦{Number(draft.price || 0).toLocaleString()}</p>
                         </div>
                         <div>
                           <span className="text-gray-500">Category:</span>

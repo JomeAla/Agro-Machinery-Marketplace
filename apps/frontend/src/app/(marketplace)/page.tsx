@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getProducts, getCategories, Product } from '@/lib/api';
+import { getPublicFeaturedProducts, getCategories, Product } from '@/lib/api';
 
 function useScrollReveal() {
   const ref = useRef<HTMLDivElement>(null);
@@ -47,10 +47,10 @@ export default function MarketplaceHomePage() {
     async function loadData() {
       try {
         const [productsData] = await Promise.all([
-          getProducts({ limit: 8 }),
+          getPublicFeaturedProducts(),
           getCategories(),
         ]);
-        setFeaturedProducts(productsData.products);
+        setFeaturedProducts(productsData.slice(0, 8));
       } catch (error) {
         console.error('Failed to load data:', error);
       } finally {
@@ -277,9 +277,11 @@ export default function MarketplaceHomePage() {
                     </span>
                   </div>
                   <div className="p-5">
-                    <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--text-muted)] font-medium mb-2">{product.category || 'Machinery'}</p>
+                    <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--text-muted)] font-medium mb-2">
+                      {typeof product.category === 'object' ? product.category.name : (product.category || 'Machinery')}
+                    </p>
                     <h3 className="text-[14px] font-bold text-white line-clamp-2 mb-3 group-hover:text-accent transition-colors">
-                      {product.name}
+                      {product.name || product.title}
                     </h3>
                     <div className="flex items-center justify-between">
                       <span className="text-[16px] font-bold text-accent">

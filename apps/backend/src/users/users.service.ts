@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { UpdateProfileDto, ChangePasswordDto } from './dto/users.dto';
+import { UpdateProfileDto, ChangePasswordDto, UpdateCompanyDto } from './dto/users.dto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -90,5 +90,35 @@ export class UsersService {
 
   async getProfile(userId: string) {
     return this.findById(userId);
+  }
+
+  async updateCompany(userId: string, dto: UpdateCompanyDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { company: true },
+    });
+
+    if (!user || !user.companyId) {
+      throw new BadRequestException('User is not associated with a company');
+    }
+
+    return this.prisma.company.update({
+      where: { id: user.companyId },
+      data: {
+        name: dto.name,
+        cacNumber: dto.cacNumber, // This triggers pending verification state if admin looks for it
+        cacDocument: dto.cacDocument,
+        description: dto.description,
+        logo: dto.logo,
+        website: dto.website,
+        email: dto.email,
+        phone: dto.phone,
+        address: dto.address,
+        city: dto.city,
+        state: dto.state,
+        // Reset verification status if CAC data changes significantly (optional policy)
+        isVerified: user.company?.cacNumber === dto.cacNumber ? user.company?.isVerified : false,
+      },
+    });
   }
 }

@@ -72,4 +72,32 @@ export class OrdersController {
   ) {
     return this.ordersService.calculateFreight(id, req.user.id, freightCost);
   }
+
+  @Post(':id/dispute')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Open a dispute for order' })
+  async openDispute(
+    @Request() req,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { reason: string },
+  ) {
+    return this.ordersService.openDispute(req.user.id, id, body.reason);
+  }
+
+  @Get('my-disputes')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get my disputes' })
+  async getMyDisputes(@Request() req) {
+    return this.ordersService.getMyDisputes(req.user.id);
+  }
+
+  @Get(':id/dispute')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get dispute details' })
+  async getDisputeDetails(@Param('id', ParseUUIDPipe) id: string) {
+    return this.ordersService.getDisputeDetails(id);
+  }
 }

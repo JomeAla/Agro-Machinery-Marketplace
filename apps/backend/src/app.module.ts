@@ -21,6 +21,10 @@ import { FaqModule } from './faq/faq.module';
 import { PromotionsModule } from './promotions/promotions.module';
 import { SupportModule } from './support/support.module';
 import { AliexpressModule } from './aliexpress/aliexpress.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { ReviewsModule } from './reviews/reviews.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { ComparisonModule } from './comparison/comparison.module';
 
 @Module({
   imports: [
@@ -47,6 +51,10 @@ import { AliexpressModule } from './aliexpress/aliexpress.module';
     PromotionsModule,
     SupportModule,
     AliexpressModule,
+    AnalyticsModule,
+    ReviewsModule,
+    NotificationsModule,
+    ComparisonModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -87,7 +87,7 @@ export default function ProductsPage() {
         price: product.price.toString(),
         condition: product.condition,
         stock: product.stock.toString(),
-        category: product.category,
+        category: typeof product.category === 'object' ? product.category.name : (product.category || categories[0]),
         images: product.images.join(', '),
       });
     } else {
@@ -240,7 +240,9 @@ export default function ProductsPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{product.category}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {typeof product.category === 'object' ? product.category.name : product.category}
+                    </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getConditionBadgeClass(product.condition)}`}>
                         {product.condition}

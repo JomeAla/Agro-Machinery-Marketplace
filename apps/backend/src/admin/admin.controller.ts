@@ -106,6 +106,11 @@ export class AdminController {
     return this.adminService.flagProduct(id, dto.reason);
   }
 
+  @Delete('products/:id')
+  async deleteProduct(@Param('id') id: string) {
+    return this.adminService.deleteProduct(id);
+  }
+
   // ==================== Order Management ====================
 
   @Get('orders')
@@ -189,5 +194,30 @@ export class AdminController {
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename=transactions.csv');
     res.send(csv);
+  }
+
+  // ==================== Seller Verification (KYC) ====================
+
+  @Get('verifications/pending')
+  async getPendingVerifications(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.adminService.getPendingVerifications({
+      page: page ? parseInt(page) : undefined,
+      limit: limit ? parseInt(limit) : undefined,
+      search,
+    });
+  }
+
+  @Post('verifications/:id/approve')
+  async approveCompany(@Param('id') id: string) {
+    return this.adminService.verifyCompany(id, true);
+  }
+
+  @Post('verifications/:id/reject')
+  async rejectCompany(@Param('id') id: string) {
+    return this.adminService.verifyCompany(id, false);
   }
 }

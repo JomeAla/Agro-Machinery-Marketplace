@@ -53,3 +53,60 @@ export class ChangePasswordDto {
   @Min(8)
   newPassword: string;
 }
+
+export class UpdateCompanyDto {
+  @ApiPropertyOptional({ example: 'Green Farms Ltd' })
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @ApiPropertyOptional({ example: 'BN-1234567' })
+  @IsString()
+  @IsOptional()
+  cacNumber?: string;
+
+  @ApiPropertyOptional({ example: 'https://example.com/cac.pdf' })
+  @IsString()
+  @IsOptional()
+  cacDocument?: string;
+
+  @ApiPropertyOptional({ example: 'Expert in rice and cassava' })
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @ApiPropertyOptional({ example: 'https://example.com/logo.png' })
+  @IsString()
+  @IsOptional()
+  logo?: string;
+
+  @ApiPropertyOptional({ example: 'https://greenfarms.ng' })
+  @IsString()
+  @IsOptional()
+  website?: string;
+
+  @ApiPropertyOptional({ example: 'office@greenfarms.ng' })
+  @IsString()
+  @IsOptional()
+  email?: string;
+
+  @ApiPropertyOptional({ example: '+2347012345678' })
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
+  @ApiPropertyOptional({ example: '123 Business Way' })
+  @IsString()
+  @IsOptional()
+  address?: string;
+
+  @ApiPropertyOptional({ example: 'Lagos' })
+  @IsString()
+  @IsOptional()
+  city?: string;
+
+  @ApiPropertyOptional({ example: 'Lagos' })
+  @IsString()
+  @IsOptional()
+  state?: string;
+}

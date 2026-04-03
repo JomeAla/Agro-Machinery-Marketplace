@@ -35,6 +35,11 @@ export class CreateOrderDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @ApiPropertyOptional({ example: 'PROMO10' })
+  @IsString()
+  @IsOptional()
+  discountCode?: string;
 }
 
 export class UpdateOrderStatusDto {

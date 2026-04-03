@@ -1,7 +1,7 @@
 import { Controller, Get, Patch, Body, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
-import { UpdateProfileDto, ChangePasswordDto } from './dto/users.dto';
+import { UpdateProfileDto, ChangePasswordDto, UpdateCompanyDto } from './dto/users.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('Users')
@@ -21,6 +21,12 @@ export class UsersController {
   @ApiOperation({ summary: 'Update current user profile' })
   async updateProfile(@Request() req, @Body() dto: UpdateProfileDto) {
     return this.usersService.updateProfile(req.user.id, dto);
+  }
+
+  @Patch('me/company')
+  @ApiOperation({ summary: 'Update your company profile' })
+  async updateCompany(@Request() req, @Body() dto: UpdateCompanyDto) {
+    return this.usersService.updateCompany(req.user.id, dto);
   }
 
   @Patch('me/password')

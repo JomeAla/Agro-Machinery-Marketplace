@@ -2,10 +2,19 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException 
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto, UpdateOrderStatusDto, OrderQueryDto } from './dto/orders.dto';
 import { OrderStatus } from '@prisma/client';
+import { PromotionsService } from '../promotions/promotions.service';
+import { FreightService } from '../freight/freight.service';
+import { VehicleType } from '../freight/dto/freight.dto';
+import { PaymentsService } from '../payments/payments.service';
 
 @Injectable()
 export class OrdersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private promotions: PromotionsService,
+    private freight: FreightService,
+    private payments: PaymentsService,
+  ) {}
 
   private generateOrderNumber(): string {
     const timestamp = Date.now().toString(36).toUpperCase();
@@ -23,7 +32,9 @@ export class OrdersService {
       throw new NotFoundException('User not found');
     }
 
-    const companyId = user.companyId || user.id;
+    // Determine target products and calculate subtotal
+    const productItems = [];
+    let subtotal = 0;
 
     const products = await this.prisma.product.findMany({
       where: {
@@ -36,7 +47,6 @@ export class OrdersService {
       throw new BadRequestException('One or more products are not available');
     }
 
-    let subtotal = 0;
     const orderItems = [];
 
     for (const item of dto.items) {
@@ -54,14 +64,55 @@ export class OrdersService {
       });
     }
 
+    // Handle Discount/Promotions
+    let discountAmount = 0;
+    if (dto.discountCode) {
+      const discountResult = await this.promotions.validateDiscountCode(dto.discountCode, subtotal);
+      discountAmount = discountResult.discountAmount;
+      
+      // Update usage count for the code
+      await this.prisma.discountCode.update({
+        where: { code: dto.discountCode },
+        data: { usedCount: { increment: 1 } }
+      });
+    }
+
+    // Handle Freight Calculation
+    let freightCost = 0;
+    if (dto.shippingState && products.length > 0) {
+      // Get the first seller's company state as origin
+      const company = await this.prisma.company.findUnique({
+        where: { id: products[0].companyId },
+      });
+
+      if (company?.state) {
+        try {
+          const freightResult = this.freight.calculateFreight({
+            originState: company.state,
+            destinationState: dto.shippingState,
+            vehicleType: VehicleType.PICKUP, // Default vehicle type
+            units: dto.items.reduce((acc, i) => acc + i.quantity, 0),
+          });
+          freightCost = freightResult.estimatedCost;
+        } catch (e) {
+          console.error('Freight calculation failed during order creation:', e.message);
+          // Fallback to 0 if state not found or other error
+        }
+      }
+    }
+
+    const finalTotal = Number(subtotal) - Number(discountAmount) + Number(freightCost);
+
     const order = await this.prisma.order.create({
       data: {
         orderNumber: this.generateOrderNumber(),
         buyerId: userId,
         companyId: products[0]?.companyId || '',
         subtotal,
-        freightCost: 0,
-        total: subtotal,
+        discountCode: dto.discountCode || null,
+        discountAmount,
+        freightCost,
+        total: finalTotal,
         shippingAddress: dto.shippingAddress,
         shippingState: dto.shippingState,
         notes: dto.notes,
@@ -275,6 +326,16 @@ export class OrdersService {
       throw new ForbiddenException('You can only update orders you are involved in');
     }
 
+    if (dto.status === OrderStatus.DELIVERED && isBuyer) {
+        // Automatically release escrow when buyer confirms delivery
+        const escrow = await this.prisma.escrow.findUnique({
+            where: { orderId: order.id }
+        });
+        if (escrow && escrow.status === 'held') {
+            await this.payments.releaseEscrow(escrow.id);
+        }
+    }
+
     return this.prisma.order.update({
       where: { id: orderId },
       data: { status: dto.status },
@@ -327,6 +388,62 @@ export class OrdersService {
             product: true,
           },
         },
+      },
+    });
+  }
+
+  async openDispute(userId: string, orderId: string, reason: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { buyer: true },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    if (order.buyerId !== userId) {
+      throw new ForbiddenException('You can only open disputes for your own orders');
+    }
+
+    if (order.status !== 'DELIVERED' && order.status !== 'SHIPPED') {
+      throw new BadRequestException('You can only open disputes for shipped or delivered orders');
+    }
+
+    if (order.disputeStatus === 'OPEN') {
+      throw new BadRequestException('Dispute is already open for this order');
+    }
+
+    return this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        disputeStatus: 'OPEN',
+        disputeReason: reason,
+      },
+    });
+  }
+
+  async getMyDisputes(userId: string) {
+    return this.prisma.order.findMany({
+      where: {
+        buyerId: userId,
+        disputeStatus: { not: null },
+      },
+      include: {
+        items: { include: { product: true } },
+        company: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
+  async getDisputeDetails(orderId: string) {
+    return this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        buyer: true,
+        items: { include: { product: true } },
+        company: true,
       },
     });
   }

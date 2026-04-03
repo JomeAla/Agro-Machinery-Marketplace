@@ -77,6 +77,10 @@ model User {
   supportTickets       SupportTicket[]
   supportReplies       SupportReply[]
   dropshipProducts     DropshipProduct[]
+  reviews             Review[]       // Added for reviews feature
+  reviewVotes         ReviewVote[]   // Added for reviews feature
+  notifications       Notification[] // Added for notifications feature
+  comparisons         ProductComparison[] // Added for comparison feature
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -162,6 +166,8 @@ model Product {
   financingRequests    FinancingRequest[]
   conversations  Conversation[]
   featuredProducts FeaturedProduct[]
+  reviews        Review[]       // Added for reviews feature
+  comparisons    ProductComparison[] // Added for comparison feature
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -190,6 +196,8 @@ model Order {
   company       Company     @relation(fields: [companyId], references: [id])
   status        OrderStatus @default(PENDING)
   subtotal      Decimal     @db.Decimal(12, 2)
+  discountCode  String?
+  discountAmount Decimal?   @db.Decimal(12, 2)
   freightCost   Decimal?    @db.Decimal(12, 2)
   total         Decimal     @db.Decimal(12, 2)
   shippingAddress String?
@@ -203,6 +211,7 @@ model Order {
   escrow       Escrow?
   freightQuotes FreightQuote[]
   warrantyClaims WarrantyClaim[]
+  reviews       Review[]       // Added for reviews feature
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
@@ -719,4 +728,108 @@ model DropshipProduct {
   @@index([status])
   @@index([adminId])
   @@index([categoryId])
+}
+
+// ==================== Reviews & Ratings ====================
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  FLAGGED
+  DELETED
+}
+
+model Review {
+  id          String       @id @default(uuid())
+  productId   String
+  product     Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User         @relation(fields: [userId], references: [id])
+  orderId     String?     // Only allow reviews for purchased products
+  order       Order?       @relation(fields: [orderId], references: [id])
+  
+  rating      Int          // 1-5 stars
+  title       String       @db.VarChar(200)
+  comment     String       @db.Text
+  
+  // Review responses
+  sellerResponse    String?    @db.Text
+  sellerResponseAt  DateTime?
+  
+  // Metrics
+  helpfulCount      Int         @default(0)
+  notHelpfulCount   Int         @default(0)
+  
+  status            ReviewStatus @default(PENDING)
+  flaggedReason     String?
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // Relations
+  votes             ReviewVote[]
+  
+  @@index([productId])
+  @@index([userId])
+  @@index([orderId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ReviewVote {
+  id          String   @id @default(uuid())
+  reviewId    String
+  review      Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  helpful     Boolean
+  
+  createdAt   DateTime @default(now())
+  
+  @@unique([reviewId, userId])
+  @@index([reviewId])
+  @@index([userId])
+}
+
+enum NotificationType {
+  ORDER_PLACED
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  PAYMENT_RECEIVED
+  PAYMENT_FAILED
+  RFQ_RECEIVED
+  RFQ_QUOTE_RECEIVED
+  WARRANTY_CLAIM_UPDATE
+  MAINTENANCE_DUE
+  VERIFICATION_APPROVED
+  VERIFICATION_REJECTED
+  REVIEW_RECEIVED
+  MESSAGE_RECEIVED
+  SYSTEM
+}
+
+model Notification {
+  id            String           @id @default(uuid())
+  userId        String
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          NotificationType
+  title         String
+  message       String
+  data          Json?
+  read          Boolean          @default(false)
+  createdAt     DateTime         @default(now())
+  
+  @@index([userId])
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+model ProductComparison {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products    Product[] 
+  createdAt   DateTime @default(now())
+  
+  @@index([userId])
 }

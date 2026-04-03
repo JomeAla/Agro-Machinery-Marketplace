@@ -3,7 +3,10 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { getProductById, createOrder, Product, Company } from '@/lib/api';
+import { getProductById, createOrder, validateDiscountCode, getPublicCategoryPromotions, Product, Company, CategoryPromotion } from '@/lib/api';
+import FinancingModal from '@/components/agro/financing-modal';
+import ProductReviews from '@/components/agro/product-reviews';
+import { getProductReviews } from '@/lib/api';
 
 function TractorIcon({ className }: { className?: string }) {
   return (
@@ -68,7 +71,7 @@ const conditionColors: Record<string, string> = {
   REFURBISHED: 'bg-blue-100 text-blue-800',
 };
 
-type ProductDetail = Product & { seller: Company; specs: Record<string, string> };
+type ProductDetail = Product & { seller: Company; specs: any };
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -80,14 +83,43 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [ordering, setOrdering] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [discount, setDiscount] = useState<any>(null);
+  const [promoError, setPromoError] = useState('');
+  const [validatingPromo, setValidatingPromo] = useState(false);
+  const [isFinancingOpen, setIsFinancingOpen] = useState(false);
+
+  const [autoDiscount, setAutoDiscount] = useState<any>(null);
 
   useEffect(() => {
     async function loadProduct() {
       try {
-        const data = await getProductById(params.id as string);
-        setProduct(data);
-      } catch (err) {
-        setError('Failed to load product');
+        const [productData, promos] = await Promise.all([
+          getProductById(params.id as string),
+          getPublicCategoryPromotions(),
+        ]);
+        setProduct(productData);
+
+        // Apply auto category promotion if exists
+        const categoryId = typeof productData.category === 'object' ? productData.category.id : null;
+        if (categoryId) {
+          const promo = promos.find(p => p.categoryId === categoryId && p.isActive);
+          if (promo) {
+            const discountValue = promo.discountType === 'PERCENTAGE' 
+              ? (productData.price * promo.discountValue) / 100 
+              : promo.discountValue;
+            
+            setAutoDiscount({
+              code: 'CATEGORY_SALE',
+              discountType: promo.discountType,
+              discountValue: promo.discountValue,
+              discountAmount: discountValue,
+              finalAmount: productData.price - discountValue
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load product:', error);
       } finally {
         setLoading(false);
       }
@@ -95,24 +127,24 @@ export default function ProductDetailPage() {
     loadProduct();
   }, [params.id]);
 
-  const handleAddToCart = async () => {
-    if (!product) return;
-    setOrdering(true);
+  const handleValidatePromo = async () => {
+    if (!promoCode.trim() || !product) return;
+    setValidatingPromo(true);
+    setPromoError('');
     try {
-      await createOrder({
-        productId: product.id,
-        quantity,
-        shippingAddress: 'Nigeria',
-      });
-      setOrderSuccess(true);
-      setTimeout(() => {
-        router.push('/orders');
-      }, 2000);
-    } catch (err) {
-      setError('Failed to create order. Please try again.');
+      const result = await validateDiscountCode(promoCode, product.price * quantity);
+      setDiscount(result);
+    } catch (err: any) {
+      setPromoError(err.message || 'Invalid promo code');
+      setDiscount(null);
     } finally {
-      setOrdering(false);
+      setValidatingPromo(false);
     }
+  };
+
+  const handleAddToCart = () => {
+    if (!product) return;
+    router.push(`/checkout?productId=${product.id}&quantity=${quantity}`);
   };
 
   if (loading) {
@@ -241,17 +273,19 @@ export default function ProductDetailPage() {
 
         <div>
           <div className="mb-4">
-            <span className="text-sm text-gray-500">{product.category}</span>
-            <h1 className="text-3xl font-bold text-gray-900 mt-1">{product.name}</h1>
+            <span className="text-sm text-gray-500">
+              {typeof product.category === 'object' ? product.category.name : product.category}
+            </span>
+            <h1 className="text-3xl font-bold text-gray-900 mt-1">{product.name || product.title}</h1>
           </div>
 
           <div className="flex items-center gap-4 mb-6">
             <span className="text-4xl font-bold text-primary-600">
-              ₦{product.price.toLocaleString()}
+              ₦{Number(product.price).toLocaleString()}
             </span>
-            {product.stock > 0 ? (
+            {(product.stock > 0 || (product.stockQuantity ?? 0) > 0) ? (
               <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                In Stock ({product.stock})
+                In Stock ({product.stock || product.stockQuantity})
               </span>
             ) : (
               <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
@@ -262,41 +296,88 @@ export default function ProductDetailPage() {
 
           <p className="text-gray-600 mb-6">{product.description}</p>
 
-          {product.specs && Object.keys(product.specs).length > 0 && (
+          {product.specs && (Array.isArray(product.specs) ? product.specs.length > 0 : Object.keys(product.specs).length > 0) && (
             <div className="mb-6">
               <h3 className="font-semibold text-gray-900 mb-3">Specifications</h3>
               <div className="grid grid-cols-2 gap-3">
-                {Object.entries(product.specs).map(([key, value]) => (
-                  <div key={key} className="flex justify-between py-2 px-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-500">{key}</span>
-                    <span className="text-sm font-medium text-gray-900">{value}</span>
-                  </div>
-                ))}
+                {Array.isArray(product.specs) ? (
+                  product.specs.map((spec: any, idx: number) => (
+                    <div key={idx} className="flex justify-between py-2 px-3 bg-gray-50 rounded-lg">
+                      <span className="text-sm text-gray-500">{spec.attr_name || spec.name || 'Spec'}</span>
+                      <span className="text-sm font-medium text-gray-900">{spec.attr_value || spec.value || '-'}</span>
+                    </div>
+                  ))
+                ) : (
+                  Object.entries(product.specs).map(([key, value]) => (
+                    <div key={key} className="flex justify-between py-2 px-3 bg-gray-50 rounded-lg">
+                      <span className="text-sm text-gray-500">{key}</span>
+                      <span className="text-sm font-medium text-gray-900">{String(value)}</span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
 
           <div className="border-t border-gray-200 pt-6 mb-6">
             <h3 className="font-semibold text-gray-900 mb-4">Quantity</h3>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 mb-4">
               <div className="flex items-center border border-gray-300 rounded-lg">
                 <button
-                  onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                  onClick={() => { setQuantity(q => Math.max(1, q - 1)); setDiscount(null); }}
                   className="px-4 py-2 text-gray-600 hover:text-gray-900"
                 >
                   -
                 </button>
                 <span className="px-4 py-2 font-medium">{quantity}</span>
                 <button
-                  onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}
+                  onClick={() => { setQuantity(q => Math.min(product.stock, q + 1)); setDiscount(null); }}
                   className="px-4 py-2 text-gray-600 hover:text-gray-900"
                 >
                   +
                 </button>
               </div>
-              <span className="text-sm text-gray-500">
-                Total: ₦{(product.price * quantity).toLocaleString()}
-              </span>
+              <div className="flex flex-col">
+                <span className={`text-sm ${(discount || autoDiscount) ? 'text-gray-400 line-through' : 'text-gray-500'}`}>
+                  Subtotal: ₦{(product.price * quantity).toLocaleString()}
+                </span>
+                {(discount || autoDiscount) && (
+                  <span className="text-lg font-bold text-green-600">
+                    Total: ₦{((discount?.finalAmount || (autoDiscount?.finalAmount * (quantity/quantity))) * (discount ? 1 : quantity)).toLocaleString()}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-gray-900">Discount Code</h3>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  placeholder="Enter code"
+                  className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900 bg-white"
+                />
+                <button
+                  onClick={handleValidatePromo}
+                  disabled={validatingPromo || !promoCode.trim()}
+                  className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 text-sm font-medium"
+                >
+                  {validatingPromo ? '...' : 'Apply'}
+                </button>
+              </div>
+              {promoError && <p className="text-xs text-red-600">{promoError}</p>}
+              {discount && (
+                <p className="text-xs text-green-600 font-medium">
+                  Applied: {discount.discountType === 'PERCENTAGE' ? `${discount.discountValue}%` : `₦${discount.discountValue}`} off
+                </p>
+              )}
+              {!discount && autoDiscount && (
+                <p className="text-xs text-blue-600 font-medium">
+                  Automatic Category Discount: {autoDiscount.discountType === 'PERCENTAGE' ? `${autoDiscount.discountValue}%` : `₦${autoDiscount.discountValue}`} off applied
+                </p>
+              )}
             </div>
           </div>
 
@@ -315,6 +396,34 @@ export default function ProductDetailPage() {
               Request Quote
             </Link>
           </div>
+
+          <div className="bg-green-50/50 border border-green-100 rounded-3xl p-6 mb-8 relative overflow-hidden group">
+            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h4 className="font-bold text-gray-900 text-lg">Financing Available</h4>
+                <p className="text-sm text-gray-500 mb-1">Spread payments up to 48 months at low interest.</p>
+                <div className="flex items-center gap-2 mt-2">
+                   <span className="text-[10px] uppercase font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded">Estimated</span>
+                   <span className="text-xl font-black text-green-600">₦{Math.round(Number(product.price) * 0.05).toLocaleString()} <span className="text-xs font-medium text-gray-400">/ mo</span></span>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsFinancingOpen(true)}
+                className="bg-white border-green-600 text-green-600 hover:bg-green-600 hover:text-white rounded-2xl py-6 px-8 font-bold shadow-lg shadow-green-100/50 transition-all scale-100 hover:scale-105 active:scale-95"
+              >
+                Apply for Finance
+              </Button>
+            </div>
+            {/* Subtle background decoration */}
+            <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-green-600/5 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700" />
+          </div>
+
+          <FinancingModal 
+            product={product} 
+            isOpen={isFinancingOpen} 
+            onClose={() => setIsFinancingOpen(false)} 
+          />
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center gap-3 mb-4">
@@ -372,6 +481,11 @@ export default function ProductDetailPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Reviews Section */}
+        <div className="mt-8">
+          <ProductReviews productId={product.id} />
         </div>
       </div>
     </div>

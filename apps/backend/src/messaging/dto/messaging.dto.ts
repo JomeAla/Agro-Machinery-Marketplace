@@ -30,3 +30,23 @@ export class ConversationQueryDto {
   @IsOptional()
   limit?: number;
 }
+
+export class CreateMessageDto {
+  @ApiProperty({ description: 'Receiver User ID' })
+  @IsUUID()
+  receiverId: string;
+
+  @ApiProperty({ description: 'Message content' })
+  @IsString()
+  content: string;
+
+  @ApiPropertyOptional({ description: 'Product ID' })
+  @IsUUID()
+  @IsOptional()
+  productId?: string;
+
+  @ApiPropertyOptional({ description: 'Conversation ID' })
+  @IsUUID()
+  @IsOptional()
+  conversationId?: string;
+}

@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { getProducts, getCategories, Product } from '@/lib/api';
+import { getProducts, getCategories, getPublicCategoryPromotions, Product, CategoryPromotion } from '@/lib/api';
 import { Button, Input, Select, ProductCard, Search, Filter, ChevronLeft, ChevronRight, Loader2 } from '@/components';
 
 function ProductsContent() {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string; slug: string }[]>([]);
+  const [promos, setPromos] = useState<CategoryPromotion[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -25,6 +26,22 @@ function ProductsContent() {
   });
 
   const [showFilters, setShowFilters] = useState(false);
+
+  useEffect(() => {
+    async function loadInitialData() {
+      try {
+        const [cats, activePromos] = await Promise.all([
+          getCategories(),
+          getPublicCategoryPromotions(),
+        ]);
+        setCategories(cats);
+        setPromos(activePromos);
+      } catch (error) {
+        console.error('Failed to load initial data:', error);
+      }
+    }
+    loadInitialData();
+  }, []);
 
   useEffect(() => {
     async function loadProducts() {
@@ -52,18 +69,6 @@ function ProductsContent() {
     loadProducts();
   }, [filters, page]);
 
-  useEffect(() => {
-    async function loadCategories() {
-      try {
-        const data = await getCategories();
-        setCategories(data);
-      } catch (error) {
-        console.error('Failed to load categories:', error);
-      }
-    }
-    loadCategories();
-  }, []);
-
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
     setPage(1);
@@ -80,6 +85,21 @@ function ProductsContent() {
       maxHp: '',
     });
     setPage(1);
+  };
+
+  // Helper to calculate discounted price
+  const getProductDiscountedPrice = (product: Product) => {
+    const categoryId = typeof product.category === 'object' ? product.category.id : null;
+    if (!categoryId) return undefined;
+
+    const promo = promos.find(p => p.categoryId === categoryId && p.isActive);
+    if (!promo) return undefined;
+
+    if (promo.discountType === 'PERCENTAGE') {
+      return product.price * (1 - promo.discountValue / 100);
+    } else {
+      return Math.max(0, product.price - promo.discountValue);
+    }
   };
 
   const hasActiveFilters = filters.category || filters.condition || filters.minPrice || filters.maxPrice || filters.minHp || filters.maxHp;
@@ -245,8 +265,10 @@ function ProductsContent() {
                     key={product.id}
                     id={product.id}
                     name={product.name}
+                    title={product.title}
                     description={product.description}
                     price={product.price}
+                    discountedPrice={getProductDiscountedPrice(product)}
                     category={product.category}
                     condition={product.condition}
                     images={product.images}

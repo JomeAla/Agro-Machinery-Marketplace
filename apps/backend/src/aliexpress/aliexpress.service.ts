@@ -54,66 +54,98 @@ export class AliExpressService {
       client_id: this.appKey,
       state: crypto.randomBytes(16).toString('hex'),
     });
-    return `${this.authUrl}?${params.toString()}`;
+    return `https://api-sg.aliexpress.com/oauth/authorize?${params.toString()}`;
   }
 
   // Exchange authorization code for access token
   async exchangeCodeForToken(code: string): Promise<any> {
     try {
-      const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000)
-        .toISOString()
-        .replace('T', ' ')
-        .substring(0, 19);
+      const url = 'https://api-sg.aliexpress.com/rest/auth/token/create';
+      const timestamp = Date.now().toString();
 
       const params: Record<string, string> = {
-        method: 'auth.token.create',
         app_key: this.appKey,
         sign_method: 'md5',
         timestamp,
-        format: 'json',
-        v: '2.0',
         code,
       };
-      params.sign = this.signRequest(params);
 
-      const body = new URLSearchParams(params);
-      const response = await fetch(`${this.apiGateway}/router/rest`, {
+      // Generate TOP API signature with route path prepended
+      const sorted = Object.keys(params).sort();
+      const concatenated = '/auth/token/create' + sorted.map(key => `${key}${params[key]}`).join('');
+      const sign = crypto
+        .createHash('md5')
+        .update(`${this.appSecret}${concatenated}${this.appSecret}`, 'utf8')
+        .digest('hex')
+        .toUpperCase();
+      
+      params.sign = sign;
+
+      console.log('Exchanging code for token:', { url, code: code.substring(0, 10) + '...' });
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
-        body: body.toString(),
+        body: new URLSearchParams(params).toString(),
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      console.log(`Response from token create:`, responseText.substring(0, 500));
 
-      if (data.error_response) {
-        throw new HttpException(
-          data.error_response.msg || 'Token exchange failed',
-          HttpStatus.BAD_REQUEST,
-        );
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        throw new HttpException(`Invalid JSON from API: ${responseText.substring(0, 100)}`, HttpStatus.BAD_REQUEST);
       }
 
+      if (data.error_response || data.error_message || (data.code && data.code !== '0' && data.type === 'ISP') || (data.code && !data.access_token)) {
+        const errorMsg = data.error_response?.msg || data.error_message || data.message || data.code || 'Unknown error';
+        throw new HttpException(`AliExpress Error: ${errorMsg}`, HttpStatus.BAD_REQUEST);
+      }
+
+      // Handle successful response format
+      // AliExpress normally wraps successful TOP responses in an object matching the endpoint
       const tokenData = data.auth_token_create_response || data;
 
+      const accessToken = tokenData.access_token;
+      const refreshToken = tokenData.refresh_token || '';
+
+      if (!accessToken) {
+        throw new HttpException('No access token in response', HttpStatus.BAD_REQUEST);
+      }
+
+      console.log('SUCCESS! Extracted tokens:', { 
+        accessToken: accessToken.substring(0, 20) + '...', 
+        refreshToken: refreshToken.substring(0, 20) + '...'
+      });
+
       // Store token in database
-      const expiresAt = new Date(Date.now() + (tokenData.expires_in || 31104000) * 1000);
-      const refreshExpiresAt = new Date(Date.now() + (tokenData.refresh_expires_in || 31104000) * 1000);
+      const expiresInSeconds = parseInt(tokenData.expires_in || tokenData.expire_time || '31104000', 10);
+      const expiresAt = new Date(Date.now() + expiresInSeconds * 1000);
+      const refreshExpiresAt = new Date(Date.now() + 31104000 * 1000); 
+
+      await this.prisma.aliExpressToken.deleteMany({ where: { accessToken: '' } });
 
       await this.prisma.aliExpressToken.create({
         data: {
-          accessToken: tokenData.access_token,
-          refreshToken: tokenData.refresh_token,
-          userId: tokenData.user_id?.toString() || 'unknown',
-          sellerId: tokenData.seller_id?.toString(),
-          account: tokenData.account,
+          accessToken,
+          refreshToken,
+          userId: tokenData.user_id?.toString() || tokenData.ali_id?.toString() || 'unknown',
+          sellerId: tokenData.user_id?.toString() || null,
+          account: tokenData.user_nick || null,
           expiresAt,
           refreshExpiresAt,
         },
       });
 
-      return { success: true, sellerId: tokenData.seller_id };
+      return { success: true, userId: tokenData.user_id };
+
     } catch (error) {
+      if (error instanceof HttpException) throw error;
+      console.error('Token exchange exception:', error);
       this.logger.error('Token exchange failed', error);
-      throw new HttpException('Failed to exchange token', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(`Failed to exchange token: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -208,101 +240,166 @@ export class AliExpressService {
       page = 1,
       pageSize = 20,
       currency = 'USD',
-      shipTo = 'NG',
+      shipTo = 'NG', // Standard default for platform
     } = options;
 
-    const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000)
-      .toISOString()
-      .replace('T', ' ')
-      .substring(0, 19);
-
-    const params: Record<string, string> = {
-      method: 'aliexpress.affiliate.product.query',
-      app_key: this.appKey,
-      sign_method: 'md5',
-      timestamp,
-      format: 'json',
-      v: '2.0',
-      keywords: keyword,
-      page_no: page.toString(),
-      page_size: pageSize.toString(),
-      target_currency: currency,
-      target_language: 'EN',
-      ship_to_country: shipTo,
-      tracking_id: 'agromarket',
-    };
-
-    if (options.minPrice) params.min_sale_price = Math.round(options.minPrice * 100).toString();
-    if (options.maxPrice) params.max_sale_price = Math.round(options.maxPrice * 100).toString();
-
-    params.sign = this.signRequest(params);
-
     try {
-      const body = new URLSearchParams(params);
-      const response = await fetch(`${this.apiGateway}/router/rest`, {
+      // 1. Detect if keyword is a direct AliExpress Product URL or ID
+      let productId = '';
+      if (/^\d{8,16}$/.test(keyword.trim())) {
+        productId = keyword.trim();
+      } else if (keyword.includes('aliexpress.com/item/')) {
+        const match = keyword.match(/\/item\/(\d+)\.html/);
+        if (match) productId = match[1];
+      }
+
+      if (productId) {
+         // Fallback: direct product import request
+         const details = await this.getProductDetails(productId, shipTo);
+         return {
+           products: [{
+             id: details.id,
+             title: details.title,
+             price: details.originalPrice,
+             originalPrice: details.originalPrice,
+             image: details.images?.[0] || '',
+             productUrl: details.productUrl,
+             commission: 0,
+             orders: 100 // Placeholder for single items
+           }],
+           totalResults: 1,
+           page: 1,
+           pageSize: 20
+         };
+      }
+
+      // 2. Generic Keyword Search via DS Product Query
+      const url = `https://api-sg.aliexpress.com/sync`;
+      const timestamp = Date.now().toString();
+
+      const payload: Record<string, string> = {
+        method: 'aliexpress.ds.product.query',
+        app_key: this.appKey,
+        sign_method: 'md5',
+        timestamp,
+        format: 'json',
+        v: '2.0',
+        session: accessToken,
+        keywords: keyword,
+        page_no: page.toString(),
+        page_size: pageSize.toString(),
+        target_currency: currency,
+        target_language: 'EN',
+        ship_to_country: shipTo,
+      };
+
+      if (options.minPrice) payload.min_price = (options.minPrice * 100).toString();
+      if (options.maxPrice) payload.max_price = (options.maxPrice * 100).toString();
+
+      // Generate TOP API MD5 Signature
+      const sorted = Object.keys(payload).sort();
+      const concatenated = sorted.map(key => `${key}${payload[key]}`).join('');
+      const sign = crypto
+        .createHash('md5')
+        .update(`${this.appSecret}${concatenated}${this.appSecret}`, 'utf8')
+        .digest('hex')
+        .toUpperCase();
+      
+      payload.sign = sign;
+
+      console.log('AliExpress keyword search request:', { keyword, page });
+
+      const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
-        body: body.toString(),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
+        },
+        body: new URLSearchParams(payload).toString(),
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        throw new HttpException(`AliExpress returned invalid response`, HttpStatus.BAD_REQUEST);
+      }
 
       if (data.error_response) {
-        this.logger.error('AliExpress search error', data.error_response);
         throw new HttpException(
-          data.error_response.msg || 'Search failed',
+          data.error_response.msg || 'Keyword search failed',
           HttpStatus.BAD_REQUEST,
         );
       }
 
-      const result = data.aliexpress_affiliate_product_query_response?.resp_result;
-      const products = result?.result?.products || [];
+      const dsResult = data.aliexpress_ds_product_query_response?.result || data.ds_product_query_response?.result || { products: { product_dto: [] }, total_record_count: 0 };
+      const products = dsResult.products?.product_dto || [];
 
       return {
-        products: products.map((p: any) => this.formatSearchProduct(p)),
-        totalResults: result?.result?.total_record_count || 0,
+        products: products.map(p => this.formatSearchProduct(p)),
+        totalResults: dsResult.total_record_count || 0,
         page,
-        pageSize,
+        pageSize
       };
+
     } catch (error) {
       if (error instanceof HttpException) throw error;
       this.logger.error('Search failed', error);
-      throw new HttpException('Failed to search AliExpress', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(error.message || 'Failed to query AliExpress', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   // Get single product details
-  async getProductDetails(productId: string): Promise<any> {
+  async getProductDetails(productId: string, shipTo: string = 'US'): Promise<any> {
     const accessToken = await this.getValidToken();
 
-    const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000)
-      .toISOString()
-      .replace('T', ' ')
-      .substring(0, 19);
-
-    const params: Record<string, string> = {
-      method: 'aliexpress.ds.product.get',
-      app_key: this.appKey,
-      sign_method: 'md5',
-      timestamp,
-      format: 'json',
-      v: '2.0',
-      product_id: productId,
-      ship_to_country: 'NG',
-      target_currency: 'USD',
-      target_language: 'EN',
-    };
-    params.sign = this.signRequest(params);
-
     try {
-      const body = new URLSearchParams(params);
-      const response = await fetch(`${this.apiGateway}/router/rest`, {
+      const url = `https://api-sg.aliexpress.com/sync`;
+
+      const payload: Record<string, string> = {
+        method: 'aliexpress.ds.product.get',
+        app_key: this.appKey,
+        sign_method: 'md5',
+        timestamp: Date.now().toString(),
+        format: 'json',
+        v: '2.0',
+        session: accessToken,
+        product_id: productId,
+        target_currency: 'USD',
+        target_language: 'EN',
+        ship_to_country: shipTo,
+      };
+
+      // Ensure no optional values are strictly required but unprovided
+      // Generate TOP API MD5 Signature
+      const sorted = Object.keys(payload).sort();
+      const concatenated = sorted.map(key => `${key}${payload[key]}`).join('');
+      const sign = crypto
+        .createHash('md5')
+        .update(`${this.appSecret}${concatenated}${this.appSecret}`, 'utf8')
+        .digest('hex')
+        .toUpperCase();
+      
+      payload.sign = sign;
+
+      console.log('AliExpress product detail request:', { url, productId });
+
+      const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
-        body: body.toString(),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
+        },
+        body: new URLSearchParams(payload).toString(),
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        throw new HttpException(`AliExpress returned invalid response`, HttpStatus.BAD_REQUEST);
+      }
 
       if (data.error_response) {
         throw new HttpException(
@@ -311,11 +408,17 @@ export class AliExpressService {
         );
       }
 
+      // Many APIs might block certain products from being shipped, log it gently
+      const dsProductResponse = data.aliexpress_ds_product_get_response || data;
+      if (dsProductResponse.rsp_code !== 200) {
+          console.warn('AliExpress Warning for product details:', dsProductResponse.rsp_msg);
+      }
+
       return this.formatProductDetail(data);
     } catch (error) {
       if (error instanceof HttpException) throw error;
       this.logger.error('Product fetch failed', error);
-      throw new HttpException('Failed to fetch product', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException('Failed to fetch product from AliExpress', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -348,12 +451,8 @@ export class AliExpressService {
         // Generate slug
         const slug = this.generateSlug(detail.title || `product-${productId}`);
 
-        // Use provided category or default to first available
-        let finalCategoryId = categoryId;
-        if (!finalCategoryId) {
-          const defaultCategory = await this.prisma.categoryModel.findFirst();
-          finalCategoryId = defaultCategory?.id || '';
-        }
+        // Smart category resolution: auto-derive from AliExpress product data
+        const finalCategoryId = await this.resolveCategory(categoryId, detail);
 
         // Get existing slugs to ensure uniqueness
         const existingSlug = await this.prisma.dropshipProduct.findUnique({ where: { slug } });
@@ -391,14 +490,17 @@ export class AliExpressService {
   }
 
   // Get draft products
-  async getDrafts(adminId: string, page = 1, limit = 20) {
+  async getDrafts(adminId: string, page?: number, limit?: number) {
+    const pageNum = page && page > 0 ? page : 1;
+    const limitNum = limit && limit > 0 ? limit : 20;
+
     const [drafts, total] = await Promise.all([
       this.prisma.dropshipProduct.findMany({
         where: { adminId, status: 'DRAFT' },
         include: { category: true },
         orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
+        skip: (pageNum - 1) * limitNum,
+        take: limitNum,
       }),
       this.prisma.dropshipProduct.count({
         where: { adminId, status: 'DRAFT' },
@@ -407,7 +509,7 @@ export class AliExpressService {
 
     return {
       data: drafts,
-      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      meta: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) },
     };
   }
 
@@ -471,7 +573,7 @@ export class AliExpressService {
         images: draft.images,
         specs: draft.specs || {},
         inStock: draft.inStock,
-        stockQuantity: draft.stockQuantity,
+        stockQuantity: draft.inStock ? 99 : 0,
         status: 'APPROVED', // Auto-approve admin-published products
         categoryId: draft.categoryId,
         sellerId: draft.adminId,
@@ -518,18 +620,121 @@ export class AliExpressService {
 
   // Helper: Format product detail
   private formatProductDetail(data: any) {
-    const product = data.ds_product_get_response?.result || data.product || data;
+    const dsResult = data.aliexpress_ds_product_get_response?.result || data.ds_product_get_response?.result || data.product || data;
+    const baseInfo = dsResult.ae_item_base_info_dto || dsResult;
+    const mediaInfo = dsResult.ae_multimedia_info_dto || dsResult;
+    const skuInfo = dsResult.ae_item_sku_info_dtos?.ae_item_sku_info_d_t_o?.[0] || dsResult;
+    const storeInfo = dsResult.ae_store_info || {};
+    const properties = dsResult.ae_item_properties?.ae_item_property || [];
+
+    // Handle images (semi-colon separated in new API, or fallback to array)
+    let images = mediaInfo.image_urls || mediaInfo.images || [];
+    if (typeof images === 'string') {
+      images = images.split(';');
+    }
+
+    // Extract useful property values for category derivation
+    const typeProperty = properties.find?.((p: any) => p.attr_name === 'Type');
+    const industryProperty = properties.find?.((p: any) => p.attr_name === 'Applicable Industries');
 
     return {
-      id: product.product_id?.toString() || product.itemId?.toString(),
-      title: product.subject || product.title || 'Unknown',
-      description: product.description || product.detail || '',
-      originalPrice: parseFloat(product.min_price || product.sale_price || '0'),
-      images: product.image_urls || product.images || [],
-      productUrl: product.detail_url || `https://www.aliexpress.com/item/${product.product_id || product.itemId}.html`,
-      specs: product.attributes || product.specs || {},
-      shipping: product.logistics_info || {},
+      id: baseInfo.product_id?.toString() || baseInfo.itemId?.toString() || 'Unknown ID',
+      title: baseInfo.subject || baseInfo.title || 'Unknown',
+      description: baseInfo.detail || baseInfo.description || '',
+      originalPrice: parseFloat(skuInfo.offer_sale_price || skuInfo.sku_price || skuInfo.min_price || baseInfo.sale_price || '0'),
+      images: images,
+      productUrl: baseInfo.detail_url || `https://www.aliexpress.com/item/${baseInfo.product_id || baseInfo.itemId}.html`,
+      specs: properties.length > 0 ? properties : (baseInfo.attributes || baseInfo.specs || {}),
+      shipping: dsResult.logistics_info_dto || baseInfo.logistics_info || {},
+      // Extra metadata for smart category auto-creation
+      aliexpressCategoryId: baseInfo.category_id?.toString() || null,
+      productType: typeProperty?.attr_value || null,
+      applicableIndustry: industryProperty?.attr_value || null,
+      storeName: storeInfo.store_name || null,
+      salesCount: baseInfo.sales_count || '0',
     };
+  }
+
+  // Helper: Intelligently resolve or auto-create a platform category from AliExpress product data
+  private async resolveCategory(explicitCategoryId: string | undefined, detail: any): Promise<string> {
+    // 1. If explicit categoryId was provided and is valid, use it
+    if (explicitCategoryId) {
+      const exists = await this.prisma.categoryModel.findUnique({ where: { id: explicitCategoryId } });
+      if (exists) return explicitCategoryId;
+    }
+
+    // 2. Derive a category name from the AliExpress product metadata
+    const categoryName = this.deriveCategoryName(detail);
+    const categorySlug = this.generateSlug(categoryName);
+
+    // 3. Upsert: find existing category by slug, or create it
+    const category = await this.prisma.categoryModel.upsert({
+      where: { slug: categorySlug },
+      update: {}, // Don't overwrite if it already exists
+      create: {
+        name: categoryName,
+        slug: categorySlug,
+        description: `Auto-created category for ${categoryName} products imported from AliExpress`,
+      },
+    });
+
+    return category.id;
+  }
+
+  // Helper: Derive a human-readable category name from AliExpress product data
+  private deriveCategoryName(detail: any): string {
+    const title = (detail.title || '').toLowerCase();
+    const productType = detail.productType || '';
+    const industry = detail.applicableIndustry || '';
+
+    // Agro-machinery keyword mapping (ordered by specificity)
+    const categoryMap: { keywords: string[]; name: string }[] = [
+      { keywords: ['tractor', 'wheel tractor', 'farm tractor'], name: 'Tractors' },
+      { keywords: ['harvester', 'combine', 'reaper'], name: 'Harvesters' },
+      { keywords: ['plough', 'plow', 'disc plow', 'moldboard'], name: 'Ploughs & Tillage' },
+      { keywords: ['seeder', 'planter', 'seed drill', 'sowing'], name: 'Seeders & Planters' },
+      { keywords: ['sprayer', 'fumigator', 'crop sprayer'], name: 'Sprayers' },
+      { keywords: ['irrigation', 'drip', 'sprinkler', 'water pump'], name: 'Irrigation Equipment' },
+      { keywords: ['mower', 'lawn mower', 'grass cutter', 'brush cutter'], name: 'Mowers & Cutters' },
+      { keywords: ['excavator', 'digger', 'backhoe', 'loader'], name: 'Excavators & Loaders' },
+      { keywords: ['generator', 'power generator', 'diesel generator'], name: 'Generators & Power' },
+      { keywords: ['trailer', 'farm trailer', 'dump trailer'], name: 'Trailers' },
+      { keywords: ['rice', 'paddy', 'rice mill', 'thresher'], name: 'Rice Processing' },
+      { keywords: ['feed', 'pellet', 'feed mixer', 'feed mill'], name: 'Feed Processing' },
+      { keywords: ['greenhouse', 'poly tunnel', 'grow tent'], name: 'Greenhouse Equipment' },
+      { keywords: ['drone', 'agricultural drone', 'crop drone'], name: 'Agricultural Drones' },
+      { keywords: ['chainsaw', 'wood chipper', 'log splitter'], name: 'Forestry Equipment' },
+      { keywords: ['pump', 'water pump', 'submersible'], name: 'Pumps' },
+      { keywords: ['engine', 'diesel engine', 'motor'], name: 'Engines & Motors' },
+      { keywords: ['spare', 'part', 'replacement', 'accessory', 'attachment'], name: 'Parts & Accessories' },
+    ];
+
+    // Check productType first (most specific from AliExpress)
+    if (productType) {
+      for (const mapping of categoryMap) {
+        if (mapping.keywords.some(kw => productType.toLowerCase().includes(kw))) {
+          return mapping.name;
+        }
+      }
+    }
+
+    // Check title keywords
+    for (const mapping of categoryMap) {
+      if (mapping.keywords.some(kw => title.includes(kw))) {
+        return mapping.name;
+      }
+    }
+
+    // Check industry
+    if (industry) {
+      const lowerIndustry = industry.toLowerCase();
+      if (lowerIndustry.includes('farm') || lowerIndustry.includes('agri')) return 'Farm Equipment';
+      if (lowerIndustry.includes('construction')) return 'Construction Equipment';
+      if (lowerIndustry.includes('food')) return 'Food Processing';
+    }
+
+    // Final fallback: use a generic but still meaningful name
+    return 'General Equipment';
   }
 
   // Helper: Generate slug from title

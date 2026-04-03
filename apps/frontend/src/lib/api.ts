@@ -1,15 +1,19 @@
 'use client';
 
+// API Configuration for AgroMarket Marketplace
+
 const API_BASE_URL = 'http://localhost:4000';
 
 export interface Product {
   id: string;
   name: string;
+  title?: string;
   description: string;
   price: number;
   condition: 'NEW' | 'USED' | 'REFURBISHED';
   stock: number;
-  category: string;
+  stockQuantity?: number;
+  category: string | { id: string; name: string; slug: string };
   images: string[];
   sellerId: string;
   createdAt: string;
@@ -213,15 +217,28 @@ export async function getCategories(): Promise<{ id: string; name: string; slug:
 }
 
 export async function createOrder(data: {
-  productId: string;
-  quantity: number;
+  productId?: string;
+  items?: { productId: string; quantity: number }[];
+  quantity?: number;
   shippingAddress: string;
+  shippingState: string;
+  notes?: string;
+  discountCode?: string;
 }): Promise<Order> {
+  // If productId/quantity provided, normalize to items array if backend needs it
+  const requestData = {
+    ...data,
+    items: data.items || [{ productId: data.productId!, quantity: data.quantity! }],
+  };
+  
   const response = await fetchWithAuth('/orders', {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify(requestData),
   });
-  if (!response.ok) throw new Error('Failed to create order');
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to create order');
+  }
   return response.json();
 }
 
@@ -972,6 +989,52 @@ export async function deleteCategoryPromotion(id: string): Promise<void> {
   if (!response.ok) throw new Error('Failed to delete category promotion');
 }
 
+export async function validateDiscountCode(code: string, amount: number): Promise<{
+  code: string;
+  discountType: string;
+  discountValue: number;
+  discountAmount: number;
+  finalAmount: number;
+}> {
+  const response = await fetch(`${API_BASE_URL}/promotions/validate-code?code=${code}&amount=${amount}`);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Invalid discount code');
+  }
+  return response.json();
+}
+
+export async function getPublicFeaturedProducts(): Promise<Product[]> {
+  const response = await fetch(`${API_BASE_URL}/promotions/featured`);
+  if (!response.ok) throw new Error('Failed to fetch featured products');
+  const data = await response.json();
+  return data.map((item: any) => item.product || item);
+}
+
+export async function purchaseFeaturedSlot(productId: string, slotId: string): Promise<any> {
+  const response = await fetchWithAuth('/promotions/admin/featured', {
+    method: 'POST',
+    body: JSON.stringify({ productId, slotId }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to purchase featured slot');
+  }
+  return response.json();
+}
+
+export async function getPublicBanners(): Promise<Banner[]> {
+  const response = await fetch(`${API_BASE_URL}/promotions/banners`);
+  if (!response.ok) throw new Error('Failed to fetch banners');
+  return response.json();
+}
+
+export async function getPublicCategoryPromotions(): Promise<CategoryPromotion[]> {
+  const response = await fetch(`${API_BASE_URL}/promotions/category-promotions`);
+  if (!response.ok) throw new Error('Failed to fetch category promotions');
+  return response.json();
+}
+
 // ========== ALIEXPRESS DROPSHIPPING ==========
 
 export async function getAliExpressAuthStatus(): Promise<{ connected: boolean }> {
@@ -1070,9 +1133,603 @@ export async function publishDropshipDraft(id: string): Promise<any> {
   return response.json();
 }
 
-export async function deleteDropshipDraft(id: string): Promise<void> {
-  const response = await fetchWithAuth(`/aliexpress/drafts/${id}`, {
-    method: 'DELETE',
+// ==================== FREIGHT & CHECKOUT ====================
+
+export async function getFreightStates(): Promise<{ name: string; code: string; capital: string; region: string }[]> {
+  const response = await fetch(`${API_BASE_URL}/freight/states`);
+  if (!response.ok) throw new Error('Failed to fetch states');
+  return response.json();
+}
+
+export async function calculateFreightEstimate(data: {
+  originState: string;
+  destinationState: string;
+  vehicleType: string;
+  units?: number;
+  weight?: number;
+}): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/freight/calculate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
   });
-  if (!response.ok) throw new Error('Failed to delete draft');
+  if (!response.ok) throw new Error('Failed to calculate freight');
+  return response.json();
+}
+
+export async function initializePayment(data: {
+  orderId: string;
+  amount: number;
+  currency: string;
+  customerEmail: string;
+  customerName: string;
+  customerPhone?: string;
+}): Promise<{ paymentId: string; paymentUrl: string; providerRef: string; provider: string }> {
+  const response = await fetchWithAuth('/payments/initialize', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Payment initialization failed');
+  }
+  return response.json();
+}
+
+export async function verifyPayment(reference: string): Promise<{ success: boolean; paymentId: string }> {
+  const response = await fetchWithAuth(`/payments/verify/${reference}`);
+  if (!response.ok) throw new Error('Payment verification failed');
+  return response.json();
+}
+
+// ==================== FINANCING ====================
+
+export async function calculateFinancing(data: {
+  amount: number;
+  tenureMonths: number;
+  interestRate?: number;
+}): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/financing/calculate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to calculate installment');
+  return response.json();
+}
+
+export async function createFinancingRequest(data: {
+  productId: string;
+  financingType: string;
+  amount: number;
+  tenureMonths: number;
+  purpose: string;
+  state?: string;
+  city?: string;
+}): Promise<any> {
+  const response = await fetchWithAuth('/financing', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to submit financing request');
+  }
+  return response.json();
+}
+
+export async function getMyFinancingRequests(): Promise<any> {
+  const response = await fetchWithAuth('/financing/my-requests');
+  if (!response.ok) throw new Error('Failed to fetch financing requests');
+  return response.json();
+}
+
+// ==================== COMPANY & VERIFICATION ====================
+
+export async function updateCompany(data: any): Promise<any> {
+  const response = await fetchWithAuth('/users/me/company', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to update company details');
+  return response.json();
+}
+
+export async function getPendingVerifications(page = 1, limit = 20): Promise<any> {
+  const response = await fetchWithAuth(`/admin/verifications/pending?page=${page}&limit=${limit}`);
+  if (!response.ok) throw new Error('Failed to fetch verifications');
+  return response.json();
+}
+
+export async function approveCompany(id: string): Promise<any> {
+  const response = await fetchWithAuth(`/admin/verifications/${id}/approve`, {
+    method: 'POST',
+  });
+  if (!response.ok) throw new Error('Failed to approve company');
+  return response.json();
+}
+
+export async function rejectCompany(id: string): Promise<any> {
+  const response = await fetchWithAuth(`/admin/verifications/${id}/reject`, {
+    method: 'POST',
+  });
+  if (!response.ok) throw new Error('Failed to reject company');
+  return response.json();
+}
+
+// ==================== MESSAGING ====================
+
+export async function getMyConversations(): Promise<any> {
+  const response = await fetchWithAuth('/messaging/conversations');
+  if (!response.ok) throw new Error('Failed to fetch conversations');
+  return response.json();
+}
+
+export async function getMessages(conversationId: string): Promise<any> {
+  const response = await fetchWithAuth(`/messaging/conversations/${conversationId}/messages`);
+  if (!response.ok) throw new Error('Failed to fetch messages');
+  return response.json();
+}
+
+// ==================== ANALYTICS ====================
+
+export async function getSellerAnalytics(): Promise<any> {
+  const response = await fetchWithAuth('/analytics/seller');
+  if (!response.ok) throw new Error('Failed to fetch analytics');
+  return response.json();
+}
+
+export async function getProductLineAnalytics(filters?: {
+  categoryId?: string;
+  productId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}): Promise<any> {
+  const params = new URLSearchParams();
+  if (filters?.categoryId) params.set('categoryId', filters.categoryId);
+  if (filters?.productId) params.set('productId', filters.productId);
+  if (filters?.dateFrom) params.set('dateFrom', filters.dateFrom);
+  if (filters?.dateTo) params.set('dateTo', filters.dateTo);
+  
+  const response = await fetchWithAuth(`/analytics/product-lines?${params.toString()}`);
+  if (!response.ok) throw new Error('Failed to fetch product analytics');
+  return response.json();
+}
+
+export async function getSalesTrends(filters?: {
+  period?: 'day' | 'week' | 'month';
+  categoryId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}): Promise<any> {
+  const params = new URLSearchParams();
+  if (filters?.period) params.set('period', filters.period);
+  if (filters?.categoryId) params.set('categoryId', filters.categoryId);
+  if (filters?.dateFrom) params.set('dateFrom', filters.dateFrom);
+  if (filters?.dateTo) params.set('dateTo', filters.dateTo);
+  
+  const response = await fetchWithAuth(`/analytics/sales-trends?${params.toString()}`);
+  if (!response.ok) throw new Error('Failed to fetch sales trends');
+  return response.json();
+}
+
+export async function exportAnalyticsReport(data: {
+  format: 'csv' | 'json';
+  type: 'orders' | 'products' | 'revenue';
+  categoryId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}): Promise<any> {
+  const response = await fetchWithAuth('/analytics/export', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to export report');
+  return response.json();
+}
+
+// ==================== REVIEWS ====================
+
+export interface Review {
+  id: string;
+  productId: string;
+  userId: string;
+  orderId?: string;
+  rating: number;
+  title: string;
+  comment: string;
+  sellerResponse?: string;
+  sellerResponseAt?: string;
+  helpfulCount: number;
+  notHelpfulCount: number;
+  status: 'PENDING' | 'APPROVED' | 'FLAGGED' | 'DELETED';
+  createdAt: string;
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    profile?: { avatar: string };
+  };
+  product?: {
+    id: string;
+    title: string;
+    images: string[];
+  };
+}
+
+export interface ProductReviews {
+  reviews: Review[];
+  averageRating: number;
+  totalReviews: number;
+  ratingDistribution: {
+    1: number;
+    2: number;
+    3: number;
+    4: number;
+    5: number;
+  };
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export async function getProductReviews(productId: string, page = 1, limit = 10): Promise<ProductReviews> {
+  const response = await fetch(`${API_BASE_URL}/reviews/product/${productId}?page=${page}&limit=${limit}`);
+  if (!response.ok) throw new Error('Failed to fetch reviews');
+  return response.json();
+}
+
+export async function createReview(data: {
+  productId: string;
+  orderId?: string;
+  rating: number;
+  title: string;
+  comment: string;
+}): Promise<Review> {
+  const response = await fetchWithAuth('/reviews', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to create review');
+  }
+  return response.json();
+}
+
+export async function getMyReviews(page = 1, limit = 10): Promise<{ reviews: Review[]; pagination: any }> {
+  const response = await fetchWithAuth(`/reviews/my-reviews?page=${page}&limit=${limit}`);
+  if (!response.ok) throw new Error('Failed to fetch my reviews');
+  return response.json();
+}
+
+export async function voteReview(reviewId: string, helpful: boolean): Promise<{ message: string }> {
+  const response = await fetchWithAuth(`/reviews/${reviewId}/vote`, {
+    method: 'POST',
+    body: JSON.stringify({ helpful }),
+  });
+  if (!response.ok) throw new Error('Failed to vote on review');
+  return response.json();
+}
+
+export interface WarrantyClaim {
+  id: string;
+  productId: string;
+  orderId: string;
+  userId: string;
+  productName?: string;
+  orderNumber?: string;
+  issueDescription: string;
+  status: 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'RESOLVED';
+  adminNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WarrantyStatus {
+  isActive: boolean;
+  warrantyEndDate: string;
+  daysRemaining: number;
+  warrantyMonths: number;
+  productName: string;
+  orderNumber: string;
+  purchaseDate: string;
+}
+
+export interface MaintenanceSchedule {
+  id: string;
+  productId: string;
+  title: string;
+  description?: string;
+  maintenanceType: 'ROUTINE' | 'SERVICE' | 'INSPECTION' | 'REPAIR';
+  intervalHours: number;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface MaintenanceRecord {
+  id: string;
+  productId: string;
+  userId: string;
+  userName?: string;
+  title: string;
+  description?: string;
+  maintenanceType: 'ROUTINE' | 'SERVICE' | 'INSPECTION' | 'REPAIR';
+  cost?: number;
+  performedAt: string;
+  createdAt: string;
+}
+
+export interface ProductManual {
+  id: string;
+  productId: string;
+  title: string;
+  fileUrl: string;
+  fileType?: string;
+  createdAt: string;
+}
+
+export async function createWarrantyClaim(data: {
+  productId: string;
+  orderId: string;
+  issueDescription: string;
+}): Promise<WarrantyClaim> {
+  const response = await fetchWithAuth('/maintenance/warranty', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to create warranty claim');
+  }
+  return response.json();
+}
+
+export async function getMyWarrantyClaims(): Promise<{ claims: WarrantyClaim[]; pagination: any }> {
+  const response = await fetchWithAuth('/maintenance/warranty/my-claims');
+  if (!response.ok) throw new Error('Failed to fetch warranty claims');
+  return response.json();
+}
+
+export async function getWarrantyStatus(productId: string, orderId: string): Promise<WarrantyStatus> {
+  const response = await fetch(`${API_BASE_URL}/maintenance/warranty/status/${productId}?orderId=${orderId}`);
+  if (!response.ok) throw new Error('Failed to fetch warranty status');
+  return response.json();
+}
+
+export async function getMaintenanceSchedules(productId: string): Promise<MaintenanceSchedule[]> {
+  const response = await fetch(`${API_BASE_URL}/maintenance/schedules/${productId}`);
+  if (!response.ok) throw new Error('Failed to fetch maintenance schedules');
+  return response.json();
+}
+
+export async function createMaintenanceSchedule(data: {
+  productId: string;
+  title: string;
+  description?: string;
+  maintenanceType: 'ROUTINE' | 'SERVICE' | 'INSPECTION' | 'REPAIR';
+  intervalHours: number;
+  notes?: string;
+}): Promise<MaintenanceSchedule> {
+  const response = await fetchWithAuth('/maintenance/schedules', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to create maintenance schedule');
+  }
+  return response.json();
+}
+
+export async function getMaintenanceRecords(productId: string): Promise<MaintenanceRecord[]> {
+  const response = await fetch(`${API_BASE_URL}/maintenance/records/${productId}`);
+  if (!response.ok) throw new Error('Failed to fetch maintenance records');
+  return response.json();
+}
+
+export async function createMaintenanceRecord(data: {
+  productId: string;
+  title: string;
+  description?: string;
+  maintenanceType: 'ROUTINE' | 'SERVICE' | 'INSPECTION' | 'REPAIR';
+  cost?: number;
+  performedAt?: string;
+}): Promise<MaintenanceRecord> {
+  const response = await fetchWithAuth('/maintenance/records', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to create maintenance record');
+  }
+  return response.json();
+}
+
+export async function getProductManuals(productId: string): Promise<ProductManual[]> {
+  const response = await fetch(`${API_BASE_URL}/maintenance/manuals/${productId}`);
+  if (!response.ok) throw new Error('Failed to fetch product manuals');
+  return response.json();
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  message: string;
+  data?: Record<string, any>;
+  read: boolean;
+  createdAt: string;
+}
+
+export async function getMyNotifications(options?: { unreadOnly?: boolean; limit?: number; offset?: number }): Promise<Notification[]> {
+  const params = new URLSearchParams();
+  if (options?.unreadOnly) params.set('unread', 'true');
+  if (options?.limit) params.set('limit', options.limit.toString());
+  if (options?.offset) params.set('offset', options.offset.toString());
+  
+  const response = await fetchWithAuth(`/notifications?${params.toString()}`);
+  if (!response.ok) throw new Error('Failed to fetch notifications');
+  return response.json();
+}
+
+export async function getUnreadNotificationCount(): Promise<{ count: number }> {
+  const response = await fetchWithAuth('/notifications/unread-count');
+  if (!response.ok) throw new Error('Failed to fetch unread count');
+  return response.json();
+}
+
+export async function markNotificationAsRead(id: string): Promise<{ message: string }> {
+  const response = await fetchWithAuth(`/notifications/${id}/read`, { method: 'PATCH' });
+  if (!response.ok) throw new Error('Failed to mark notification as read');
+  return response.json();
+}
+
+export async function markAllNotificationsAsRead(): Promise<{ message: string }> {
+  const response = await fetchWithAuth('/notifications/read-all', { method: 'PATCH' });
+  if (!response.ok) throw new Error('Failed to mark all as read');
+  return response.json();
+}
+
+export async function deleteNotification(id: string): Promise<{ message: string }> {
+  const response = await fetchWithAuth(`/notifications/${id}`, { method: 'DELETE' });
+  if (!response.ok) throw new Error('Failed to delete notification');
+  return response.json();
+}
+
+export interface ComparisonProduct {
+  id: string;
+  title: string;
+  slug: string;
+  price: number;
+  condition: string;
+  images: string[];
+  category: { name: string };
+  seller: { company: { name: string } };
+  reviews: Array<{ rating: number }>;
+}
+
+export interface ComparisonList {
+  id: string;
+  userId: string;
+  products: ComparisonProduct[];
+}
+
+export async function addToComparison(productId: string): Promise<ComparisonList> {
+  const response = await fetchWithAuth('/comparison/add', {
+    method: 'POST',
+    body: JSON.stringify({ productId }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to add to comparison');
+  }
+  return response.json();
+}
+
+export async function removeFromComparison(productId: string): Promise<ComparisonList> {
+  const response = await fetchWithAuth('/comparison/remove', {
+    method: 'POST',
+    body: JSON.stringify({ productId }),
+  });
+  if (!response.ok) throw new Error('Failed to remove from comparison');
+  return response.json();
+}
+
+export async function getMyComparison(): Promise<ComparisonList> {
+  const response = await fetchWithAuth('/comparison');
+  if (!response.ok) throw new Error('Failed to fetch comparison');
+  return response.json();
+}
+
+export async function clearComparison(): Promise<ComparisonList> {
+  const response = await fetchWithAuth('/comparison/clear', { method: 'DELETE' });
+  if (!response.ok) throw new Error('Failed to clear comparison');
+  return response.json();
+}
+
+export interface DisputeOrder {
+  id: string;
+  orderNumber: string;
+  status: string;
+  disputeStatus: string;
+  disputeReason?: string;
+  items: Array<{ product: { name: string; images: string[] } }>;
+  company: { name: string };
+  total: number;
+  createdAt: string;
+}
+
+export async function openDispute(orderId: string, reason: string): Promise<{ message: string }> {
+  const response = await fetchWithAuth(`/orders/${orderId}/dispute`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to open dispute');
+  }
+  return response.json();
+}
+
+export async function getMyDisputes(): Promise<DisputeOrder[]> {
+  const response = await fetchWithAuth('/orders/my-disputes');
+  if (!response.ok) throw new Error('Failed to fetch disputes');
+  return response.json();
+}
+
+export async function getDisputeDetails(orderId: string): Promise<DisputeOrder> {
+  const response = await fetchWithAuth(`/orders/${orderId}/dispute`);
+  if (!response.ok) throw new Error('Failed to fetch dispute details');
+  return response.json();
+}
+
+export interface SupportReply {
+  id: string;
+  ticketId: string;
+  userId: string;
+  message: string;
+  isStaff: boolean;
+  createdAt: string;
+  user?: {
+    firstName: string;
+    lastName: string;
+  };
+}
+
+export async function getMySupportTickets(): Promise<{ tickets: SupportTicket[] }> {
+  const response = await fetchWithAuth('/support/tickets');
+  if (!response.ok) throw new Error('Failed to fetch tickets');
+  return response.json();
+}
+
+export async function createSupportTicket(data: {
+  category: string;
+  subject: string;
+  description: string;
+  priority?: string;
+}): Promise<SupportTicket> {
+  const response = await fetchWithAuth('/support/tickets', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to create ticket');
+  }
+  return response.json();
+}
+
+export async function addSupportReply(ticketId: string, message: string): Promise<SupportReply> {
+  const response = await fetchWithAuth(`/support/tickets/${ticketId}/replies`, {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  });
+  if (!response.ok) throw new Error('Failed to add reply');
+  return response.json();
 }

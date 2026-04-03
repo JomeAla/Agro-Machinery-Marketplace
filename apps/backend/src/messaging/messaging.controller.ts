@@ -1,13 +1,17 @@
 import { Controller, Get, Post, Body, Param, Query, UseGuards, Request, ParseUUIDPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { MessagingService } from './messaging.service';
+import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 import { CreateConversationDto, ConversationQueryDto, SendMessageDto } from './dto/messaging.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('Messaging')
 @Controller('conversations')
 export class MessagingController {
-  constructor(private readonly messagingService: MessagingService) {}
+  constructor(
+    private readonly messagingService: MessagingService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
@@ -55,6 +59,22 @@ export class MessagingController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SendMessageDto,
   ) {
-    return this.messagingService.sendMessage(id, req.user.id, dto);
+    const message = await this.messagingService.sendMessage(id, req.user.id, dto);
+    
+    // Get conversation to find recipient
+    const conversation = await this.messagingService.getConversation(id, req.user.id);
+    const recipientId = conversation.buyerId === req.user.id ? conversation.sellerId : conversation.buyerId;
+    const senderName = message.sender?.firstName || message.sender?.lastName || 'Someone';
+    
+    // Create notification for recipient
+    await this.notificationsService.create({
+      userId: recipientId,
+      type: NotificationType.MESSAGE_RECEIVED,
+      title: 'New Message',
+      message: `You have a new message from ${senderName}`,
+      data: { conversationId: id, senderId: req.user.id },
+    });
+    
+    return message;
   }
 }

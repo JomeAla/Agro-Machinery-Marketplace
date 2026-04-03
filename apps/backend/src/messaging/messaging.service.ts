@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateConversationDto, ConversationQueryDto, SendMessageDto } from './dto/messaging.dto';
+import { CreateConversationDto, ConversationQueryDto, SendMessageDto, CreateMessageDto } from './dto/messaging.dto';
 
 @Injectable()
 export class MessagingService {
@@ -281,5 +281,37 @@ export class MessagingService {
     ]);
 
     return message;
+  }
+
+  async createMessage(senderId: string, dto: CreateMessageDto) {
+    let conversationId = dto.conversationId;
+
+    if (!conversationId) {
+      // Find or create conversation
+      const existing = await this.prisma.conversation.findFirst({
+        where: {
+          OR: [
+            { buyerId: senderId, sellerId: dto.receiverId },
+            { buyerId: dto.receiverId, sellerId: senderId },
+          ],
+          productId: dto.productId,
+        },
+      });
+
+      if (existing) {
+        conversationId = existing.id;
+      } else {
+        const convo = await this.prisma.conversation.create({
+          data: {
+            buyerId: senderId, // Assume sender is buyer if creating new convo (adjust if needed)
+            sellerId: dto.receiverId,
+            productId: dto.productId,
+          },
+        });
+        conversationId = convo.id;
+      }
+    }
+
+    return this.sendMessage(conversationId, senderId, { content: dto.content });
   }
 }

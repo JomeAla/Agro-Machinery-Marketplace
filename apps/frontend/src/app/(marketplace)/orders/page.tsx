@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getMyOrders, checkAuth, Order } from '@/lib/api';
+import { getMyOrders, updateOrderStatus, checkAuth, Order } from '@/lib/api';
 
 function TractorIcon({ className }: { className?: string }) {
   return (
@@ -147,7 +147,25 @@ export default function OrdersPage() {
                     </div>
                   </div>
 
-                  <ChevronRightIcon className="w-5 h-5 text-gray-400 hidden md:block" />
+                  <div className="flex flex-col gap-2 min-w-[120px]">
+                    <ChevronRightIcon className="w-5 h-5 text-gray-400 self-end hidden md:block" />
+                    {(order.status === 'SHIPPED' || order.status === 'PAID') && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (confirm('Are you sure you have received this item and want to release payment to the seller?')) {
+                            updateOrderStatus(order.id, 'DELIVERED').then(() => {
+                              // Refresh orders
+                              getMyOrders().then(setOrders);
+                            });
+                          }
+                        }}
+                        className="mt-2 px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors shadow-sm shadow-green-100"
+                      >
+                        Confirm Delivery
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {order.shippingAddress && (

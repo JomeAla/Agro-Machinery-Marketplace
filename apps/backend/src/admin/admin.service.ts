@@ -339,6 +339,31 @@ export class AdminService {
     });
   }
 
+  async deleteProduct(id: string) {
+    const product = await this.prisma.product.findUnique({ 
+      where: { id },
+      include: { orderItems: true }
+    });
+    
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    if (product.orderItems.length > 0) {
+      throw new BadRequestException('Cannot delete product with existing orders. Flag it instead.');
+    }
+
+    // Handle dropship draft link (nullify reference)
+    await this.prisma.dropshipProduct.updateMany({
+      where: { publishedProductId: id },
+      data: { publishedProductId: null, status: 'DRAFT' }
+    });
+
+    return this.prisma.product.delete({
+      where: { id },
+    });
+  }
+
   // ==================== Order Management ====================
 
   async getOrders(query: OrderQueryDto) {
@@ -608,5 +633,60 @@ export class AdminService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  // ==================== Seller Verification (KYC) ====================
+
+  async getPendingVerifications(query: { page?: number; limit?: number; search?: string }) {
+    const { page = 1, limit = 20, search } = query;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      isVerified: false,
+      cacNumber: { not: null },
+    };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { cacNumber: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [companies, total] = await Promise.all([
+      this.prisma.company.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: { users: { select: { id: true, firstName: true, lastName: true, email: true } } },
+      }),
+      this.prisma.company.count({ where }),
+    ]);
+
+    return {
+      data: companies,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async verifyCompany(id: string, isVerified: boolean) {
+    const company = await this.prisma.company.findUnique({ where: { id } });
+    if (!company) {
+      throw new NotFoundException('Company not found');
+    }
+
+    return this.prisma.company.update({
+      where: { id },
+      data: {
+        isVerified,
+        verifiedAt: isVerified ? new Date() : null,
+      },
+    });
   }
 }

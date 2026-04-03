@@ -8,6 +8,7 @@ import { checkAuth } from '@/lib/api';
 const marketplaceNav = [
   { name: 'Home', href: '/' },
   { name: 'Products', href: '/products' },
+  { name: 'Messages', href: '/messages' },
   { name: 'Request Quote', href: '/rfq' },
   { name: 'Support', href: '/support' },
 ];
@@ -48,21 +49,21 @@ export default function MarketplaceLayout({ children }: { children: React.ReactN
       {/* Top bar */}
       <div className="hidden md:block bg-dark-100 border-b border-white/[0.04]">
         <div className="max-w-7xl mx-auto px-6 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-6 text-[11px] text-[var(--text-muted)] uppercase tracking-wider">
+          <div className="flex items-center gap-6 text-[11px] text-[var(--text-secondary)] uppercase tracking-wider">
             <span className="flex items-center gap-1.5">
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <svg className="w-3.5 h-3.5 text-accent/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
               </svg>
               +234 906 525 7784
             </span>
             <span className="flex items-center gap-1.5">
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <svg className="w-3.5 h-3.5 text-accent/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
               </svg>
               support@agromarket.com
             </span>
           </div>
-          <span className="text-[11px] text-[var(--text-muted)]">Nigeria's Premier Agricultural Machinery Marketplace</span>
+          <span className="text-[11px] text-[var(--text-secondary)]">Nigeria's Premier Agricultural Machinery Marketplace</span>
         </div>
       </div>
 
@@ -139,6 +140,7 @@ export default function MarketplaceLayout({ children }: { children: React.ReactN
                             <p className="text-xs text-[var(--text-muted)] truncate">{user?.email || ''}</p>
                           </div>
                           <div className="py-1">
+                            <Link href="/messages" className="block px-4 py-2.5 text-sm text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.04] transition-colors" onClick={() => setUserMenuOpen(false)}>Messages</Link>
                             <Link href="/orders" className="block px-4 py-2.5 text-sm text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.04] transition-colors" onClick={() => setUserMenuOpen(false)}>My Orders</Link>
                             <Link href="/rfqs" className="block px-4 py-2.5 text-sm text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.04] transition-colors" onClick={() => setUserMenuOpen(false)}>My RFQs</Link>
                             {user?.role === 'ADMIN' && (
