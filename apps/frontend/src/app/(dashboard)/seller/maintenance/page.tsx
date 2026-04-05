@@ -86,10 +86,10 @@ export default function MaintenanceCenterPage() {
         getMyProducts(),
         checkAuth()
       ]);
-      setProducts(prods.products || []);
+      setProducts(prods || []);
       
-      if (prods.products?.length > 0) {
-        setSelectedProduct(prods.products[0].id);
+      if (prods?.length > 0) {
+        setSelectedProduct(prods[0].id);
       }
     } catch (err) {
       console.error('Failed to load data', err);
@@ -135,7 +135,11 @@ export default function MaintenanceCenterPage() {
     try {
       await createMaintenanceSchedule({
         productId: selectedProduct,
-        ...scheduleForm,
+        title: scheduleForm.title,
+        description: scheduleForm.description,
+        maintenanceType: scheduleForm.maintenanceType as 'ROUTINE' | 'SERVICE' | 'INSPECTION' | 'REPAIR',
+        intervalHours: scheduleForm.intervalHours,
+        notes: scheduleForm.notes,
       });
       setMessage({ type: 'success', text: 'Maintenance schedule created!' });
       loadProductData(selectedProduct);
@@ -155,7 +159,10 @@ export default function MaintenanceCenterPage() {
       const { createMaintenanceRecord: createRecord } = await import('@/lib/api');
       await createRecord({
         productId: selectedProduct,
-        ...recordForm,
+        title: recordForm.title,
+        description: recordForm.description,
+        maintenanceType: recordForm.maintenanceType as 'ROUTINE' | 'SERVICE' | 'INSPECTION' | 'REPAIR',
+        cost: recordForm.cost,
       });
       setMessage({ type: 'success', text: 'Maintenance record added!' });
       loadProductData(selectedProduct);

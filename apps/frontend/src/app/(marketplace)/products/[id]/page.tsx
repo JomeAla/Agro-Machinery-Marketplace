@@ -7,6 +7,7 @@ import { getProductById, createOrder, validateDiscountCode, getPublicCategoryPro
 import FinancingModal from '@/components/agro/financing-modal';
 import ProductReviews from '@/components/agro/product-reviews';
 import { getProductReviews } from '@/lib/api';
+import { Button } from '@/components/ui/button';
 
 function TractorIcon({ className }: { className?: string }) {
   return (
@@ -176,11 +177,11 @@ export default function ProductDetailPage() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Product Not Found</h2>
-          <p className="text-gray-500 mb-6">The product you're looking for doesn't exist or has been removed.</p>
+          <h2 className="text-2xl font-bold text-white mb-4">Product Not Found</h2>
+          <p className="text-[var(--text-muted)] mb-6">The product you're looking for doesn't exist or has been removed.</p>
           <Link
             href="/products"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-accent text-dark font-semibold rounded-lg hover:bg-accent/90"
           >
             <ChevronLeftIcon className="w-5 h-5" />
             Back to Products
@@ -190,15 +191,11 @@ export default function ProductDetailPage() {
     );
   }
 
-  const images = product.images?.length > 0 
-    ? product.images 
-    : ['https://via.placeholder.com/600x400?text=Agro+Machine'];
-
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-dark min-h-screen">
       <Link
         href="/products"
-        className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
+        className="inline-flex items-center gap-2 text-[var(--text-secondary)] hover:text-white mb-6"
       >
         <ChevronLeftIcon className="w-5 h-5" />
         Back to Products
@@ -222,18 +219,18 @@ export default function ProductDetailPage() {
       <div className="grid lg:grid-cols-2 gap-8">
         <div>
           <div className="relative bg-gray-100 rounded-2xl overflow-hidden mb-4">
-            {images[selectedImage] ? (
+            {product.images && product.images.length > 0 ? (
               <img
-                src={images[selectedImage]}
-                alt={product.name}
-                className="w-full h-96 lg:h-[500px] object-cover"
+                src={product.images[selectedImage]}
+                alt={product.title || product.name}
+                className="w-full h-96 lg:h-[500px] object-contain bg-gray-50"
               />
             ) : (
               <div className="w-full h-96 lg:h-[500px] flex items-center justify-center">
                 <TractorIcon className="w-24 h-24 text-gray-300" />
               </div>
             )}
-            {images.length > 1 && (
+            {product.images && product.images.length > 1 && (
               <>
                 <button
                   onClick={() => setSelectedImage(i => Math.max(0, i - 1))}
@@ -242,21 +239,21 @@ export default function ProductDetailPage() {
                   <ChevronLeftIcon className="w-5 h-5" />
                 </button>
                 <button
-                  onClick={() => setSelectedImage(i => Math.min(images.length - 1, i + 1))}
+                  onClick={() => setSelectedImage(i => Math.min(product.images!.length - 1, i + 1))}
                   className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/90 rounded-full shadow-lg hover:bg-white"
                 >
                   <ChevronRightIcon className="w-5 h-5" />
                 </button>
               </>
             )}
-            <span className={`absolute top-4 left-4 px-3 py-1 rounded-full text-sm font-medium ${conditionColors[product.condition]}`}>
-              {product.condition}
+            <span className={`absolute top-4 left-4 px-3 py-1 rounded-full text-sm font-medium ${conditionColors[product.condition] || 'bg-gray-100 text-gray-800'}`}>
+              {product.condition || 'NEW'}
             </span>
           </div>
 
-          {images.length > 1 && (
+          {product.images && product.images.length > 1 && (
             <div className="flex gap-2 overflow-x-auto pb-2">
-              {images.map((img, idx) => (
+              {product.images.map((img: string, idx: number) => (
                 <button
                   key={idx}
                   onClick={() => setSelectedImage(idx)}
@@ -273,19 +270,19 @@ export default function ProductDetailPage() {
 
         <div>
           <div className="mb-4">
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-[var(--text-muted)]">
               {typeof product.category === 'object' ? product.category.name : product.category}
             </span>
-            <h1 className="text-3xl font-bold text-gray-900 mt-1">{product.name || product.title}</h1>
+            <h1 className="text-2xl lg:text-3xl font-bold text-white mt-1 leading-tight">{product.title || product.name}</h1>
           </div>
 
           <div className="flex items-center gap-4 mb-6">
-            <span className="text-4xl font-bold text-primary-600">
+            <span className="text-4xl font-bold text-accent">
               ₦{Number(product.price).toLocaleString()}
             </span>
-            {(product.stock > 0 || (product.stockQuantity ?? 0) > 0) ? (
+            {((product as any).stockQuantity > 0 || (product as any).stock > 0 || product.condition === 'NEW') ? (
               <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                In Stock ({product.stock || product.stockQuantity})
+                In Stock
               </span>
             ) : (
               <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
@@ -294,24 +291,31 @@ export default function ProductDetailPage() {
             )}
           </div>
 
-          <p className="text-gray-600 mb-6">{product.description}</p>
+          <div className="mb-6">
+            <p 
+              className="text-[var(--text-secondary)] text-sm leading-relaxed"
+              dangerouslySetInnerHTML={{ 
+                __html: (product.description || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() 
+              }}
+            />
+          </div>
 
           {product.specs && (Array.isArray(product.specs) ? product.specs.length > 0 : Object.keys(product.specs).length > 0) && (
             <div className="mb-6">
-              <h3 className="font-semibold text-gray-900 mb-3">Specifications</h3>
+              <h3 className="font-semibold text-white mb-3">Specifications</h3>
               <div className="grid grid-cols-2 gap-3">
                 {Array.isArray(product.specs) ? (
                   product.specs.map((spec: any, idx: number) => (
-                    <div key={idx} className="flex justify-between py-2 px-3 bg-gray-50 rounded-lg">
-                      <span className="text-sm text-gray-500">{spec.attr_name || spec.name || 'Spec'}</span>
-                      <span className="text-sm font-medium text-gray-900">{spec.attr_value || spec.value || '-'}</span>
+                    <div key={idx} className="flex justify-between py-2 px-3 bg-white/[0.04] rounded-lg">
+                      <span className="text-sm text-[var(--text-muted)]">{spec.attr_name || spec.name || 'Spec'}</span>
+                      <span className="text-sm font-medium text-white">{spec.attr_value || spec.value || '-'}</span>
                     </div>
                   ))
                 ) : (
                   Object.entries(product.specs).map(([key, value]) => (
-                    <div key={key} className="flex justify-between py-2 px-3 bg-gray-50 rounded-lg">
-                      <span className="text-sm text-gray-500">{key}</span>
-                      <span className="text-sm font-medium text-gray-900">{String(value)}</span>
+                    <div key={key} className="flex justify-between py-2 px-3 bg-white/[0.04] rounded-lg">
+                      <span className="text-sm text-[var(--text-muted)]">{key}</span>
+                      <span className="text-sm font-medium text-white">{String(value)}</span>
                     </div>
                   ))
                 )}
@@ -320,25 +324,25 @@ export default function ProductDetailPage() {
           )}
 
           <div className="border-t border-gray-200 pt-6 mb-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Quantity</h3>
+            <h3 className="font-semibold text-white mb-4">Quantity</h3>
             <div className="flex items-center gap-4 mb-4">
-              <div className="flex items-center border border-gray-300 rounded-lg">
+              <div className="flex items-center border border-white/[0.08] rounded-lg">
                 <button
                   onClick={() => { setQuantity(q => Math.max(1, q - 1)); setDiscount(null); }}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-900"
+                  className="px-4 py-2 text-[var(--text-secondary)] hover:text-white"
                 >
                   -
                 </button>
-                <span className="px-4 py-2 font-medium">{quantity}</span>
+                <span className="px-4 py-2 font-medium text-white">{quantity}</span>
                 <button
-                  onClick={() => { setQuantity(q => Math.min(product.stock, q + 1)); setDiscount(null); }}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-900"
+                  onClick={() => { setQuantity(q => Math.min((product as any).stock || 999, q + 1)); setDiscount(null); }}
+                  className="px-4 py-2 text-[var(--text-secondary)] hover:text-white"
                 >
                   +
                 </button>
               </div>
               <div className="flex flex-col">
-                <span className={`text-sm ${(discount || autoDiscount) ? 'text-gray-400 line-through' : 'text-gray-500'}`}>
+                <span className={`text-sm ${(discount || autoDiscount) ? 'text-[var(--text-muted)] line-through' : 'text-[var(--text-secondary)]'}`}>
                   Subtotal: ₦{(product.price * quantity).toLocaleString()}
                 </span>
                 {(discount || autoDiscount) && (
@@ -350,14 +354,14 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-gray-900">Discount Code</h3>
+              <h3 className="text-sm font-semibold text-white">Discount Code</h3>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={promoCode}
                   onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
                   placeholder="Enter code"
-                  className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900 bg-white"
+                  className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent bg-dark-100 border-white/[0.08] text-white placeholder-[var(--text-muted)]"
                 />
                 <button
                   onClick={handleValidatePromo}
@@ -384,14 +388,14 @@ export default function ProductDetailPage() {
           <div className="flex gap-4 mb-8">
             <button
               onClick={handleAddToCart}
-              disabled={ordering || product.stock === 0}
-              className="flex-1 px-6 py-4 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 text-white font-semibold rounded-xl transition-colors"
+              disabled={ordering || (product as any).stock === 0}
+              className="flex-1 px-6 py-4 bg-accent hover:bg-accent/90 disabled:bg-white/[0.06] text-dark font-semibold rounded-xl transition-colors"
             >
               {ordering ? 'Processing...' : 'Add to Cart'}
             </button>
             <Link
               href={`/rfq?product=${product.id}`}
-              className="flex-1 px-6 py-4 border-2 border-primary-600 text-primary-600 font-semibold rounded-xl hover:bg-primary-50 text-center transition-colors"
+              className="flex-1 px-6 py-4 border-2 border-accent text-accent font-semibold rounded-xl hover:bg-accent/[0.06] text-center transition-colors"
             >
               Request Quote
             </Link>
@@ -400,8 +404,8 @@ export default function ProductDetailPage() {
           <div className="bg-green-50/50 border border-green-100 rounded-3xl p-6 mb-8 relative overflow-hidden group">
             <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h4 className="font-bold text-gray-900 text-lg">Financing Available</h4>
-                <p className="text-sm text-gray-500 mb-1">Spread payments up to 48 months at low interest.</p>
+                <h4 className="font-bold text-white text-lg">Financing Available</h4>
+                <p className="text-sm text-[var(--text-muted)] mb-1">Spread payments up to 48 months at low interest.</p>
                 <div className="flex items-center gap-2 mt-2">
                    <span className="text-[10px] uppercase font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded">Estimated</span>
                    <span className="text-xl font-black text-green-600">₦{Math.round(Number(product.price) * 0.05).toLocaleString()} <span className="text-xs font-medium text-gray-400">/ mo</span></span>
@@ -425,42 +429,42 @@ export default function ProductDetailPage() {
             onClose={() => setIsFinancingOpen(false)} 
           />
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-dark-100 rounded-2xl shadow-sm border border-white/[0.06] p-6">
             <div className="flex items-center gap-3 mb-4">
               {product.seller?.logo ? (
                 <img src={product.seller.logo} alt="" className="w-12 h-12 rounded-lg object-cover" />
               ) : (
-                <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-                  <TractorIcon className="w-6 h-6 text-primary-600" />
+                <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center">
+                  <TractorIcon className="w-6 h-6 text-accent" />
                 </div>
               )}
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-gray-900">{product.seller?.name || 'Seller'}</h3>
+                  <h3 className="font-semibold text-white">{product.seller?.name || 'Seller'}</h3>
                   {product.seller?.verified && (
-                    <VerifiedIcon className="w-5 h-5 text-green-600" />
+                    <VerifiedIcon className="w-5 h-5 text-accent" />
                   )}
                 </div>
-                <p className="text-sm text-gray-500">Verified Seller</p>
+                <p className="text-sm text-[var(--text-muted)]">Verified Seller</p>
               </div>
             </div>
 
             {product.seller && (
               <div className="space-y-3 text-sm">
                 {product.seller.address && (
-                  <div className="flex items-center gap-2 text-gray-600">
+                  <div className="flex items-center gap-2 text-[var(--text-secondary)]">
                     <MapPinIcon className="w-4 h-4" />
                     {product.seller.address}
                   </div>
                 )}
                 {product.seller.phone && (
-                  <div className="flex items-center gap-2 text-gray-600">
+                  <div className="flex items-center gap-2 text-[var(--text-secondary)]">
                     <PhoneIcon className="w-4 h-4" />
                     {product.seller.phone}
                   </div>
                 )}
                 {product.seller.email && (
-                  <div className="flex items-center gap-2 text-gray-600">
+                  <div className="flex items-center gap-2 text-[var(--text-secondary)]">
                     <MailIcon className="w-4 h-4" />
                     {product.seller.email}
                   </div>

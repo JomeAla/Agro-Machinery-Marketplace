@@ -745,4 +745,354 @@ export class AliExpressService {
       .replace(/^-|-$/g, '')
       .substring(0, 100);
   }
+
+  // ==================== ORDER FULFILLMENT ====================
+
+  async createDropshipOrder(params: {
+    orderId: string;
+    platformProductId: string;
+    aliexpressProductId: string;
+    quantity: number;
+    aliexpressPrice: number;
+    sellingPrice: number;
+    shippingAddress: string;
+    shippingState?: string;
+  }) {
+    const platformOrder = await this.prisma.order.findUnique({
+      where: { id: params.orderId },
+      include: { buyer: true },
+    });
+
+    if (!platformOrder) {
+      throw new HttpException('Platform order not found', HttpStatus.NOT_FOUND);
+    }
+
+    const profit = params.sellingPrice - (params.aliexpressPrice * params.quantity);
+    
+    const dropshipOrder = await this.prisma.dropshipOrder.create({
+      data: {
+        orderId: params.orderId,
+        platformProductId: params.platformProductId,
+        aliexpressProductId: params.aliexpressProductId,
+        buyerId: platformOrder.buyerId,
+        quantity: params.quantity,
+        aliexpressPrice: params.aliexpressPrice,
+        sellingPrice: params.sellingPrice,
+        profit,
+        shippingAddress: params.shippingAddress,
+        shippingState: params.shippingState,
+        status: 'PENDING',
+      },
+    });
+
+    return dropshipOrder;
+  }
+
+  async placeAliExpressOrder(dropshipOrderId: string) {
+    const dropshipOrder = await this.prisma.dropshipOrder.findUnique({
+      where: { id: dropshipOrderId },
+    });
+
+    if (!dropshipOrder) {
+      throw new HttpException('Dropship order not found', HttpStatus.NOT_FOUND);
+    }
+
+    if (dropshipOrder.status !== 'PENDING') {
+      throw new HttpException('Order already processed', HttpStatus.BAD_REQUEST);
+    }
+
+    const accessToken = await this.getValidToken();
+
+    try {
+      const url = 'https://api-sg.aliexpress.com/sync';
+      const timestamp = Date.now().toString();
+
+      const payload: any = {
+        method: 'aliexpress.trade.buy.place',
+        app_key: this.appKey,
+        sign_method: 'md5',
+        timestamp,
+        format: 'json',
+        v: '2.0',
+        session: accessToken,
+        product_id: dropshipOrder.aliexpressProductId,
+        quantity: dropshipOrder.quantity.toString(),
+        address: dropshipOrder.shippingAddress,
+      };
+
+      const sorted = Object.keys(payload).sort();
+      const concatenated = sorted.map(key => `${key}${payload[key]}`).join('');
+      const sign = crypto
+        .createHash('md5')
+        .update(`${this.appSecret}${concatenated}${this.appSecret}`, 'utf8')
+        .digest('hex')
+        .toUpperCase();
+      payload.sign = sign;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
+        },
+        body: new URLSearchParams(payload).toString(),
+      });
+
+      const data = await response.json();
+      
+      if (data.error_response) {
+        throw new HttpException(
+          data.error_response.msg || 'Failed to place AliExpress order',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      const result = data.aliexpress_trade_buy_place_response || data;
+      
+      if (result.success === 'true' || result.success === true) {
+        const aliexpressOrderId = result.order_id || result.aliexpress_order_id;
+        
+        await this.prisma.dropshipOrder.update({
+          where: { id: dropshipOrderId },
+          data: {
+            aliexpressOrderId,
+            status: 'PROCESSING',
+            aliexpressPaidAt: new Date(),
+          },
+        });
+
+        return { success: true, aliexpressOrderId };
+      }
+
+      throw new HttpException('Failed to place order on AliExpress', HttpStatus.BAD_REQUEST);
+
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      this.logger.error('Failed to place AliExpress order', error);
+      throw new HttpException('Failed to place order', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getDropshipOrderStatus(dropshipOrderId: string) {
+    const dropshipOrder = await this.prisma.dropshipOrder.findUnique({
+      where: { id: dropshipOrderId },
+    });
+
+    if (!dropshipOrder) {
+      throw new HttpException('Dropship order not found', HttpStatus.NOT_FOUND);
+    }
+
+    if (!dropshipOrder.aliexpressOrderId) {
+      return { status: dropshipOrder.status, aliexpressOrderId: null };
+    }
+
+    const accessToken = await this.getValidToken();
+
+    try {
+      const url = 'https://api-sg.aliexpress.com/sync';
+      const timestamp = Date.now().toString();
+
+      const payload: any = {
+        method: 'aliexpress.trade.buy.get',
+        app_key: this.appKey,
+        sign_method: 'md5',
+        timestamp,
+        format: 'json',
+        v: '2.0',
+        session: accessToken,
+        order_id: dropshipOrder.aliexpressOrderId,
+      };
+
+      const sorted = Object.keys(payload).sort();
+      const concatenated = sorted.map(key => `${key}${payload[key]}`).join('');
+      const sign = crypto
+        .createHash('md5')
+        .update(`${this.appSecret}${concatenated}${this.appSecret}`, 'utf8')
+        .digest('hex')
+        .toUpperCase();
+      payload.sign = sign;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
+        },
+        body: new URLSearchParams(payload).toString(),
+      });
+
+      const data = await response.json();
+      const result = data.aliexpress_trade_buy_get_response || data;
+
+      let newStatus = dropshipOrder.status;
+      let trackingNumber = dropshipOrder.aliexpressTracking;
+
+      if (result.order) {
+        const aliOrder = result.order;
+        if (aliOrder.status === 'WAIT_SELLER_SEND_GOODS') {
+          newStatus = 'PROCESSING';
+        } else if (aliOrder.status === 'SELLER_SENT_GOODS' || aliOrder.status === 'IN_TRADE') {
+          newStatus = 'SHIPPED';
+          if (aliOrder.tracking_no) {
+            trackingNumber = aliOrder.tracking_no;
+          }
+        } else if (aliOrder.status === 'TRADE_FINISHED') {
+          newStatus = 'DELIVERED';
+        } else if (aliOrder.status === 'CANCEL') {
+          newStatus = 'CANCELLED';
+        }
+      }
+
+      if (newStatus !== dropshipOrder.status || trackingNumber !== dropshipOrder.aliexpressTracking) {
+        await this.prisma.dropshipOrder.update({
+          where: { id: dropshipOrderId },
+          data: {
+            status: newStatus,
+            aliexpressTracking: trackingNumber,
+            aliexpressShippedAt: newStatus === 'SHIPPED' ? new Date() : null,
+            aliexpressDeliveredAt: newStatus === 'DELIVERED' ? new Date() : null,
+          },
+        });
+      }
+
+      return {
+        status: newStatus,
+        aliexpressOrderId: dropshipOrder.aliexpressOrderId,
+        trackingNumber,
+      };
+
+    } catch (error) {
+      this.logger.error('Failed to get order status', error);
+      return {
+        status: dropshipOrder.status,
+        aliexpressOrderId: dropshipOrder.aliexpressOrderId,
+        trackingNumber: dropshipOrder.aliexpressTracking,
+      };
+    }
+  }
+
+  async getDropshipOrders(page = 1, limit = 20, status?: string) {
+    const where = status ? { status: status as any } : {};
+    
+    const [orders, total] = await Promise.all([
+      this.prisma.dropshipOrder.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.dropshipOrder.count({ where }),
+    ]);
+
+    return {
+      data: orders,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  // ==================== INVENTORY & PRICE SYNC ====================
+
+  async syncDropshipProductPrice(aliexpressProductId: string) {
+    const product = await this.prisma.dropshipProduct.findUnique({
+      where: { aliexpressId: aliexpressProductId },
+      include: { category: true },
+    });
+
+    if (!product || product.status !== 'PUBLISHED') {
+      throw new HttpException('Dropship product not found or not published', HttpStatus.NOT_FOUND);
+    }
+
+    const details = await this.getProductDetails(aliexpressProductId);
+    const newOriginalPrice = parseFloat(details.originalPrice || details.sale_price || '0');
+    const newMarkupPrice = newOriginalPrice * this.markupMultiplier;
+    const newSellingPrice = newMarkupPrice + (newMarkupPrice * this.platformFeePercent / 100);
+
+    await this.prisma.dropshipProduct.update({
+      where: { id: product.id },
+      data: {
+        originalPrice: newOriginalPrice,
+        markupPrice: newMarkupPrice,
+        price: newSellingPrice,
+        originalImages: details.images || [],
+      },
+    });
+
+    if (product.publishedProductId) {
+      await this.prisma.product.update({
+        where: { id: product.publishedProductId },
+        data: {
+          price: newSellingPrice,
+          images: details.images || [],
+        },
+      });
+    }
+
+    return {
+      originalPrice: newOriginalPrice,
+      markupPrice: newMarkupPrice,
+      sellingPrice: newSellingPrice,
+    };
+  }
+
+  async syncAllDropshipProducts() {
+    const products = await this.prisma.dropshipProduct.findMany({
+      where: { status: 'PUBLISHED' },
+    });
+
+    const results = [];
+    for (const product of products) {
+      try {
+        const updated = await this.syncDropshipProductPrice(product.aliexpressId);
+        results.push({
+          id: product.id,
+          aliexpressId: product.aliexpressId,
+          success: true,
+          ...updated,
+        });
+      } catch (error) {
+        results.push({
+          id: product.id,
+          aliexpressId: product.aliexpressId,
+          success: false,
+          error: error.message,
+        });
+      }
+    }
+
+    return results;
+  }
+
+  // ==================== PROFIT REPORTS ====================
+
+  async getProfitReport() {
+    const orders = await this.prisma.dropshipOrder.findMany({
+      where: {
+        status: { in: ['DELIVERED', 'SHIPPED', 'PROCESSING', 'PAID'] },
+      },
+    });
+
+    const totalRevenue = orders.reduce((sum, o) => sum + Number(o.sellingPrice), 0);
+    const totalCost = orders.reduce((sum, o) => sum + Number(o.aliexpressPrice) * o.quantity, 0);
+    const totalProfit = orders.reduce((sum, o) => sum + Number(o.profit), 0);
+
+    const byStatus = await this.prisma.dropshipOrder.groupBy({
+      by: ['status'],
+      _sum: { profit: true, sellingPrice: true },
+      _count: true,
+    });
+
+    return {
+      summary: {
+        totalOrders: orders.length,
+        totalRevenue,
+        totalCost,
+        totalProfit,
+        profitMargin: totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0,
+      },
+      byStatus: byStatus.map(s => ({
+        status: s.status,
+        count: s._count,
+        revenue: s._sum.sellingPrice || 0,
+        profit: s._sum.profit || 0,
+      })),
+    };
+  }
 }

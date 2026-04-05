@@ -60,9 +60,9 @@ export default function BuyerMaintenancePage() {
   async function loadOrders() {
     try {
       const data = await getMyOrders();
-      setOrders(data.orders || []);
-      if (data.orders?.length > 0) {
-        setSelectedOrder(data.orders[0].id);
+      setOrders(data || []);
+      if (data?.length > 0) {
+        setSelectedOrder(data[0].id);
       }
     } catch (err) {
       console.error('Failed to load orders', err);

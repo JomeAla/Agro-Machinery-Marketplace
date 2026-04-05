@@ -212,6 +212,7 @@ model Order {
   freightQuotes FreightQuote[]
   warrantyClaims WarrantyClaim[]
   reviews       Review[]       // Added for reviews feature
+  dropshipOrder DropshipOrder?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
@@ -681,6 +682,16 @@ enum DropshipStatus {
   ARCHIVED
 }
 
+enum DropshipOrderStatus {
+  PENDING
+  PROCESSING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
 model AliExpressToken {
   id            String   @id @default(uuid())
   accessToken   String   @db.Text
@@ -728,6 +739,43 @@ model DropshipProduct {
   @@index([status])
   @@index([adminId])
   @@index([categoryId])
+}
+
+model DropshipOrder {
+  id                    String              @id @default(uuid())
+  orderId               String              @unique // Link to platform Order
+  order                 Order               @relation(fields: [orderId], references: [id])
+  aliexpressOrderId     String?             @unique // AliExpress order ID
+  aliexpressProductId   String              // AliExpress product ID
+  aliexpressSkuId       String?             // SKU ID for variant
+  
+  // Platform order info
+  platformProductId     String              // Published product ID
+  buyerId               String
+  quantity              Int
+  
+  // Pricing
+  aliexpressPrice       Decimal             @db.Decimal(12, 2)  // Cost from AliExpress
+  sellingPrice          Decimal             @db.Decimal(12, 2)  // What customer paid
+  profit                Decimal             @db.Decimal(12, 2)  // profit = sellingPrice - aliexpressPrice
+  
+  // Shipping
+  shippingAddress       String              @db.Text
+  shippingState         String?
+  aliexpressTracking    String?
+  
+  // Status
+  status                DropshipOrderStatus @default(PENDING)
+  
+  // Timestamps
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  aliexpressPaidAt      DateTime?
+  aliexpressShippedAt   DateTime?
+  aliexpressDeliveredAt DateTime?
+
+  @@index([orderId])
+  @@index([status])
 }
 
 // ==================== Reviews & Ratings ====================

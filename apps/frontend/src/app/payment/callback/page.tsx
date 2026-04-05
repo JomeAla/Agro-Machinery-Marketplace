@@ -24,7 +24,8 @@ function CallbackContent() {
 
     async function verify() {
       try {
-        const result = await verifyPayment(reference);
+        const ref = reference || '';
+        const result = await verifyPayment(ref);
         if (result.success) {
           setStatus('success');
           setTimeout(() => {

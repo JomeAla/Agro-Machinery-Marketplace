@@ -10,7 +10,8 @@ import { Badge } from '@/components/ui/badge';
 interface FinancingModalProps {
   product: {
     id: string;
-    title: string;
+    title?: string;
+    name?: string;
     price: number;
     images: string[];
   };
@@ -96,7 +97,7 @@ export default function FinancingModal({ product, isOpen, onClose }: FinancingMo
         <div className="sm:w-1/3 bg-gray-50 p-8 flex flex-col justify-between border-b sm:border-b-0 sm:border-r">
           <div>
             <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none mb-4">Financing Option</Badge>
-            <h2 className="text-2xl font-black text-gray-900 leading-tight mb-4">{product.title}</h2>
+            <h2 className="text-2xl font-black text-gray-900 leading-tight mb-4">{product.title || product.name}</h2>
             <img 
               src={product.images[0] || 'https://via.placeholder.com/300'} 
               className="w-full aspect-square object-cover rounded-2xl shadow-lg mb-6"
@@ -278,7 +279,7 @@ export default function FinancingModal({ product, isOpen, onClose }: FinancingMo
                <div className="bg-gray-50 rounded-3xl p-8 mb-8 space-y-4">
                   <div className="flex justify-between border-b border-gray-200 pb-4">
                      <span className="text-gray-500">Machinery</span>
-                     <span className="font-bold text-gray-900">{product.title}</span>
+                     <span className="font-bold text-gray-900">{product.title || product.name}</span>
                   </div>
                   <div className="flex justify-between border-b border-gray-200 pb-4">
                      <span className="text-gray-500">Finance Amount</span>

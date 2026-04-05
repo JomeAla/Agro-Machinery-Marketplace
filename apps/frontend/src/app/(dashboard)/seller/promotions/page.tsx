@@ -46,7 +46,7 @@ export default function SellerPromotionsPage() {
         getMyProducts(),
       ]);
       setSlots(slotsData.filter((s: FeaturedSlot) => s.isActive));
-      setProducts(productsData.products || []);
+      setProducts(productsData || []);
     } catch (err) {
       console.error('Failed to load data', err);
     } finally {

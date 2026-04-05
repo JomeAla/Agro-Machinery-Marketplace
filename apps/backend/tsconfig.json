@@ -20,5 +20,11 @@
     "paths": {
       "@backend/*": ["src/*"]
     }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"],
+  "ts-node": {
+    "compiler": "typescript",
+    "transpileOnly": true
   }
 }

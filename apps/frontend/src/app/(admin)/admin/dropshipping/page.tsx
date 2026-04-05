@@ -156,12 +156,20 @@ export default function DropshippingPage() {
           <h1 className="text-2xl font-bold text-gray-900">AliExpress Dropshipping</h1>
           <p className="text-gray-500 text-sm mt-1">Search and import products from AliExpress</p>
         </div>
-        <Link
-          href="/admin/dropshipping/drafts"
-          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium"
-        >
-          View Drafts
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/admin/dropshipping/drafts"
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium"
+          >
+            Drafts
+          </Link>
+          <Link
+            href="/admin/dropshipping/orders"
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium"
+          >
+            Orders
+          </Link>
+        </div>
       </div>
 
       {message.text && (

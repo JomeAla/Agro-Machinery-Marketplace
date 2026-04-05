@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { getProductReviews, createReview, voteReview, ProductReviews, Review } from '@/lib/api';
+import { getProductReviews, createReview, voteReview } from '@/lib/api';
+import type { ProductReviews, Review } from '@/lib/api';
 
 export default function ProductReviews({
   productId,

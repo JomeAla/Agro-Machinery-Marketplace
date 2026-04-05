@@ -6,8 +6,7 @@ import {
   getCategories, 
   getMyProducts,
   exportAnalyticsReport,
-  type Product,
-  type CategoryModel 
+  type Product
 } from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,7 +34,7 @@ interface SalesTrend {
 export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'trends' | 'export'>('overview');
-  const [categories, setCategories] = useState<CategoryModel[]>([]);
+  const [categories, setCategories] = useState<{id: string; name: string; slug: string}[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   
   const [filters, setFilters] = useState({
@@ -66,7 +65,7 @@ export default function AnalyticsPage() {
   async function loadCategories() {
     try {
       const data = await getCategories();
-      setCategories(data.categories || []);
+      setCategories(data || []);
       loadProducts();
     } catch (err) {
       console.error('Failed to load categories', err);
@@ -76,7 +75,7 @@ export default function AnalyticsPage() {
   async function loadProducts() {
     try {
       const data = await getMyProducts();
-      setProducts(data.products || []);
+      setProducts(data || []);
       setLoading(false);
     } catch (err) {
       console.error('Failed to load products', err);

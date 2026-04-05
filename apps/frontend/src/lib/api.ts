@@ -29,6 +29,7 @@ export interface Order {
   productImage: string;
   quantity: number;
   totalPrice: number;
+  total?: number;
   status: 'PENDING' | 'PAID' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
   shippingAddress: string;
   createdAt: string;
@@ -286,6 +287,12 @@ export function checkAuth(): { isAuthenticated: boolean; user: any | null } {
   return { isAuthenticated: !!token, user };
 }
 
+export async function getProfile(): Promise<any> {
+  const response = await fetchWithAuth('/users/me');
+  if (!response.ok) throw new Error('Failed to fetch profile');
+  return response.json();
+}
+
 // ==================== Admin API ====================
 
 export interface AdminAnalytics {
@@ -492,7 +499,7 @@ export interface Transaction {
   providerRef: string | null;
   status: string;
   paidAt: Date | null;
-  createdAt: Date;
+  createdAt: string;
   order: {
     orderNumber: string;
     buyer: { id: string; firstName: string; lastName: string; email: string };
@@ -559,7 +566,7 @@ export interface FaqCategory {
   slug: string;
   description: string | null;
   order: number;
-  createdAt: Date;
+  createdAt: string;
   updatedAt: Date;
 }
 
@@ -574,7 +581,7 @@ export interface FaqArticle {
   notHelpfulCount: number;
   order: number;
   published: boolean;
-  createdAt: Date;
+  createdAt: string;
   updatedAt: Date;
 }
 
@@ -686,8 +693,8 @@ export interface SupportTicket {
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
   assignedTo?: string;
   replies: SupportReply[];
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface SupportReply {
@@ -702,7 +709,7 @@ export interface SupportReply {
   };
   message: string;
   isAdmin: boolean;
-  createdAt: Date;
+  createdAt: string;
 }
 
 export interface SupportTicketStats {
@@ -801,7 +808,7 @@ export interface DiscountCode {
   startsAt: Date | null;
   expiresAt: Date | null;
   isActive: boolean;
-  createdAt: Date;
+  createdAt: string;
   updatedAt: Date;
 }
 
@@ -825,7 +832,7 @@ export interface Banner {
   expiresAt: Date | null;
   isActive: boolean;
   order: number;
-  createdAt: Date;
+  createdAt: string;
   updatedAt: Date;
 }
 
@@ -1005,10 +1012,17 @@ export async function validateDiscountCode(code: string, amount: number): Promis
 }
 
 export async function getPublicFeaturedProducts(): Promise<Product[]> {
-  const response = await fetch(`${API_BASE_URL}/promotions/featured`);
+  const response = await fetch(`${API_BASE_URL}/promotions/featured?_t=${Date.now()}`);
   if (!response.ok) throw new Error('Failed to fetch featured products');
   const data = await response.json();
-  return data.map((item: any) => item.product || item);
+  return data.map((item: any) => {
+    const product = item.product || item;
+    return {
+      ...product,
+      name: product.title || product.name,
+      stock: product.stockQuantity || product.stock,
+    };
+  });
 }
 
 export async function purchaseFeaturedSlot(productId: string, slotId: string): Promise<any> {
@@ -1130,6 +1144,130 @@ export async function publishDropshipDraft(id: string): Promise<any> {
     const error = await response.json().catch(() => ({}));
     throw new Error(error.message || 'Failed to publish');
   }
+  return response.json();
+}
+
+export async function deleteDropshipDraft(id: string): Promise<void> {
+  const response = await fetchWithAuth(`/aliexpress/drafts/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to delete draft');
+  }
+}
+
+// ==================== DROPSHIP ORDER FULFILLMENT ====================
+
+export async function createDropshipOrder(data: {
+  orderId: string;
+  platformProductId: string;
+  aliexpressProductId: string;
+  quantity: number;
+  aliexpressPrice: number;
+  sellingPrice: number;
+  shippingAddress: string;
+  shippingState?: string;
+}): Promise<any> {
+  const response = await fetchWithAuth('/aliexpress/orders', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to create dropship order');
+  }
+  return response.json();
+}
+
+export async function placeAliExpressOrder(dropshipOrderId: string): Promise<{ success: boolean; aliexpressOrderId: string }> {
+  const response = await fetchWithAuth(`/aliexpress/orders/${dropshipOrderId}/place`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to place order');
+  }
+  return response.json();
+}
+
+export async function getDropshipOrderStatus(dropshipOrderId: string): Promise<{
+  status: string;
+  aliexpressOrderId: string | null;
+  trackingNumber: string | null;
+}> {
+  const response = await fetchWithAuth(`/aliexpress/orders/${dropshipOrderId}/status`);
+  if (!response.ok) throw new Error('Failed to get order status');
+  return response.json();
+}
+
+export async function getDropshipOrders(page?: number, limit?: number, status?: string): Promise<{
+  data: any[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}> {
+  const params = new URLSearchParams();
+  if (page) params.set('page', page.toString());
+  if (limit) params.set('limit', limit.toString());
+  if (status) params.set('status', status);
+
+  const response = await fetchWithAuth(`/aliexpress/orders?${params.toString()}`);
+  if (!response.ok) throw new Error('Failed to fetch dropship orders');
+  return response.json();
+}
+
+// ==================== DROPSHIP PRICE & INVENTORY SYNC ====================
+
+export async function syncDropshipProductPrice(aliexpressProductId: string): Promise<{
+  originalPrice: number;
+  markupPrice: number;
+  sellingPrice: number;
+}> {
+  const response = await fetchWithAuth(`/aliexpress/products/${aliexpressProductId}/sync`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to sync price');
+  }
+  return response.json();
+}
+
+export async function syncAllDropshipProducts(): Promise<{
+  id: string;
+  aliexpressId: string;
+  success: boolean;
+  originalPrice?: number;
+  markupPrice?: number;
+  sellingPrice?: number;
+  error?: string;
+}[]> {
+  const response = await fetchWithAuth('/aliexpress/products/sync-all', {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to sync products');
+  }
+  return response.json();
+}
+
+export async function getDropshipProfitReport(): Promise<{
+  summary: {
+    totalOrders: number;
+    totalRevenue: number;
+    totalCost: number;
+    totalProfit: number;
+    profitMargin: number;
+  };
+  byStatus: {
+    status: string;
+    count: number;
+    revenue: number;
+    profit: number;
+  }[];
+}> {
+  const response = await fetchWithAuth('/aliexpress/reports/profit');
+  if (!response.ok) throw new Error('Failed to get profit report');
   return response.json();
 }
 
@@ -1260,13 +1398,13 @@ export async function rejectCompany(id: string): Promise<any> {
 // ==================== MESSAGING ====================
 
 export async function getMyConversations(): Promise<any> {
-  const response = await fetchWithAuth('/messaging/conversations');
+  const response = await fetchWithAuth('/conversations');
   if (!response.ok) throw new Error('Failed to fetch conversations');
   return response.json();
 }
 
 export async function getMessages(conversationId: string): Promise<any> {
-  const response = await fetchWithAuth(`/messaging/conversations/${conversationId}/messages`);
+  const response = await fetchWithAuth(`/conversations/${conversationId}/messages`);
   if (!response.ok) throw new Error('Failed to fetch messages');
   return response.json();
 }
@@ -1697,8 +1835,10 @@ export interface SupportReply {
   isStaff: boolean;
   createdAt: string;
   user?: {
-    firstName: string;
-    lastName: string;
+    id: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
   };
 }
 

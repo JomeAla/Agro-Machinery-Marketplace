@@ -1,0 +1,2 @@
+@echo off
+ngrok config add-authtoken 3Bg8RtviRYsNMvwi25RDamuu8Lc_32qgt4FDJF6vEhGXFoCaa

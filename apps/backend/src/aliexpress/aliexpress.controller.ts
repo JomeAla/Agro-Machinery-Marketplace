@@ -115,4 +115,82 @@ export class AliExpressController {
   async deleteDraft(@Param('id', ParseUUIDPipe) id: string) {
     return this.aliexpressService.deleteDraft(id);
   }
+
+  // ==================== ORDER FULFILLMENT ====================
+
+  @Post('orders')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create dropship order from platform order' })
+  async createDropshipOrder(@Body() dto: {
+    orderId: string;
+    platformProductId: string;
+    aliexpressProductId: string;
+    quantity: number;
+    aliexpressPrice: number;
+    sellingPrice: number;
+    shippingAddress: string;
+    shippingState?: string;
+  }) {
+    return this.aliexpressService.createDropshipOrder(dto);
+  }
+
+  @Post('orders/:id/place')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Place order on AliExpress' })
+  async placeAliExpressOrder(@Param('id', ParseUUIDPipe) id: string) {
+    return this.aliexpressService.placeAliExpressOrder(id);
+  }
+
+  @Get('orders/:id/status')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get dropship order status from AliExpress' })
+  async getOrderStatus(@Param('id', ParseUUIDPipe) id: string) {
+    return this.aliexpressService.getDropshipOrderStatus(id);
+  }
+
+  @Get('orders')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all dropship orders' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'status', required: false })
+  async getDropshipOrders(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('status') status?: string,
+  ) {
+    return this.aliexpressService.getDropshipOrders(page, limit, status);
+  }
+
+  // ==================== PRICE & INVENTORY SYNC ====================
+
+  @Post('products/:id/sync')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Sync product price from AliExpress' })
+  async syncProductPrice(@Param('id') aliexpressProductId: string) {
+    return this.aliexpressService.syncDropshipProductPrice(aliexpressProductId);
+  }
+
+  @Post('products/sync-all')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Sync all dropship products prices' })
+  async syncAllProducts() {
+    return this.aliexpressService.syncAllDropshipProducts();
+  }
+
+  // ==================== PROFIT REPORTS ====================
+
+  @Get('reports/profit')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get dropshipping profit report' })
+  async getProfitReport() {
+    return this.aliexpressService.getProfitReport();
+  }
 }

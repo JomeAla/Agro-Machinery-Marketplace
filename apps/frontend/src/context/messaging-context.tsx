@@ -34,7 +34,8 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
   const [lastMessage, setLastMessage] = useState<Message | null>(null);
 
   useEffect(() => {
-    const { isAuthenticated, token } = checkAuth();
+    const { isAuthenticated } = checkAuth();
+    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
     
     if (isAuthenticated && token) {
       const newSocket = io('http://localhost:4000/messaging', {
