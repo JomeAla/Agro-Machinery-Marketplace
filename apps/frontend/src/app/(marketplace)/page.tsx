@@ -47,7 +47,7 @@ export default function MarketplaceHomePage() {
     async function loadData() {
       try {
         const productsData = await getPublicFeaturedProducts();
-        console.log('Setting products:', productsData.length);
+        console.log('Setting products:', productsData.length, productsData);
         setFeaturedProducts(productsData);
       } catch (error) {
         console.error('[Home] Failed to load data:', error);
@@ -59,7 +59,7 @@ export default function MarketplaceHomePage() {
     loadData();
   }, []);
 
-  console.log('RENDER:', { loading, productsLength: featuredProducts.length });
+  console.log('RENDER:', { loading, productsLength: featuredProducts.length, firstProduct: featuredProducts[0]?.name });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
