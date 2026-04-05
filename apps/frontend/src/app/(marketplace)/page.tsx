@@ -37,7 +37,6 @@ export default function MarketplaceHomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [debugInfo, setDebugInfo] = useState<{loading: boolean; length: number; id?: string} | null>(null);
 
   const statsRef = useScrollReveal();
   const categoriesRef = useScrollReveal();
@@ -48,19 +47,19 @@ export default function MarketplaceHomePage() {
     async function loadData() {
       try {
         const productsData = await getPublicFeaturedProducts();
+        console.log('Setting products:', productsData.length);
         setFeaturedProducts(productsData);
       } catch (error) {
         console.error('[Home] Failed to load data:', error);
       } finally {
+        console.log('Setting loading false');
         setLoading(false);
       }
     }
     loadData();
   }, []);
 
-  useEffect(() => {
-    setDebugInfo({ loading, length: featuredProducts.length, id: featuredProducts[0]?.id });
-  }, [loading, featuredProducts]);
+  console.log('RENDER:', { loading, productsLength: featuredProducts.length });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -256,14 +255,7 @@ export default function MarketplaceHomePage() {
                 </div>
               ))}
             </div>
-          ) : (
-            <>
-              {debugInfo && (
-                <div className="text-green-400 text-sm mb-4 p-2 bg-green-900/20 border border-green-500/30 rounded">
-                  DEBUG: loading={String(debugInfo.loading)}, length={debugInfo.length}, id={debugInfo.id}
-                </div>
-              )}
-              {featuredProducts.length > 0 ? (
+          ) : featuredProducts.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 scroll-reveal" ref={featuredRef}>
               {featuredProducts.map((product) => (
                 <Link key={product.id} href={`/products/${product.id}`} className="card-glass group">
@@ -319,7 +311,6 @@ export default function MarketplaceHomePage() {
                   <Link href="/products" className="btn-primary">Browse Products</Link>
                 </div>
               )}
-            </>
           )}
 
           <div className="mt-8 text-center sm:hidden">
