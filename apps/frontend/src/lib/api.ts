@@ -1012,24 +1012,17 @@ export async function validateDiscountCode(code: string, amount: number): Promis
 }
 
 export async function getPublicFeaturedProducts(): Promise<Product[]> {
-  console.log('[API] Fetching featured products from:', `${API_BASE_URL}/promotions/featured`);
   const response = await fetch(`${API_BASE_URL}/promotions/featured?_t=${Date.now()}`);
   if (!response.ok) throw new Error('Failed to fetch featured products');
   const data = await response.json();
-  console.log('[API] Raw response:', JSON.stringify(data).slice(0, 500));
-  console.log('[API] Is array:', Array.isArray(data));
-  console.log('[API] Data length:', data?.length);
-  const mapped = data.map((item: any) => {
+  return data.map((item: any) => {
     const product = item.product || item;
-    console.log('[API] Mapping product:', product.title, product.stockQuantity);
     return {
       ...product,
       name: product.title || product.name,
       stock: product.stockQuantity || product.stock,
     };
   });
-  console.log('[API] Mapped result:', mapped);
-  return mapped;
 }
 
 export async function purchaseFeaturedSlot(productId: string, slotId: string): Promise<any> {
