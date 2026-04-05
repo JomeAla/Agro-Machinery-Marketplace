@@ -311,7 +311,6 @@ export default function MarketplaceHomePage() {
               <Link href="/products" className="btn-primary">Browse Products</Link>
             </div>
           )}
-          )}
 
           <div className="mt-8 text-center sm:hidden">
             <Link href="/products" className="btn-secondary w-full justify-center">View All Products</Link>
