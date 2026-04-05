@@ -255,8 +255,9 @@ export default function MarketplaceHomePage() {
                 </div>
               ))}
             </div>
-          ) : featuredProducts.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 scroll-reveal" ref={featuredRef}>
+          ) : (
+            featuredProducts.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 scroll-reveal" ref={featuredRef}>
               {featuredProducts.map((product) => (
                 <Link key={product.id} href={`/products/${product.id}`} className="card-glass group">
                   <div className="relative h-52 bg-dark overflow-hidden rounded-t-[1.25rem]">
