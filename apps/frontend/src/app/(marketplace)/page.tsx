@@ -48,11 +48,16 @@ export default function MarketplaceHomePage() {
       try {
         console.log('[Home] Fetching featured products...');
         const productsData = await getPublicFeaturedProducts();
-        console.log('[Home] Featured products loaded:', productsData);
-        setFeaturedProducts(productsData.slice(0, 8));
+        console.log('[Home] Featured products raw:', JSON.stringify(productsData));
+        console.log('[Home] Featured products length:', productsData.length);
+        const sliced = productsData.slice(0, 8);
+        console.log('[Home] Sliced products:', sliced);
+        setFeaturedProducts(sliced);
+        console.log('[Home] State updated, loading now false');
       } catch (error) {
         console.error('[Home] Failed to load data:', error);
       } finally {
+        console.log('[Home] Setting loading to false');
         setLoading(false);
       }
     }
