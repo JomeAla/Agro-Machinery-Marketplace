@@ -255,9 +255,8 @@ export default function MarketplaceHomePage() {
                 </div>
               ))}
             </div>
-          ) : (
-            featuredProducts.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 scroll-reveal" ref={featuredRef}>
+          ) : featuredProducts.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 scroll-reveal" ref={featuredRef}>
               {featuredProducts.map((product) => (
                 <Link key={product.id} href={`/products/${product.id}`} className="card-glass group">
                   <div className="relative h-52 bg-dark overflow-hidden rounded-t-[1.25rem]">
@@ -300,18 +299,18 @@ export default function MarketplaceHomePage() {
                 </Link>
               ))}
             </div>
-              ) : (
-                <div className="text-center py-24 card-glass">
-                  <div className="w-20 h-20 rounded-full bg-white/[0.03] flex items-center justify-center mx-auto mb-6">
-                    <svg className="w-8 h-8 text-white/10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">No products listed yet</h3>
-                  <p className="text-[var(--text-muted)] mb-8 max-w-sm mx-auto">Be the first to list agricultural machinery.</p>
-                  <Link href="/products" className="btn-primary">Browse Products</Link>
-                </div>
-              )}
+          ) : (
+            <div className="text-center py-24 card-glass">
+              <div className="w-20 h-20 rounded-full bg-white/[0.03] flex items-center justify-center mx-auto mb-6">
+                <svg className="w-8 h-8 text-white/10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">No products listed yet</h3>
+              <p className="text-[var(--text-muted)] mb-8 max-w-sm mx-auto">Be the first to list agricultural machinery.</p>
+              <Link href="/products" className="btn-primary">Browse Products</Link>
+            </div>
+          )}
           )}
 
           <div className="mt-8 text-center sm:hidden">
