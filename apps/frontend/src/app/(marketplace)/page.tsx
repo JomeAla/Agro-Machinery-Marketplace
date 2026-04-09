@@ -40,26 +40,26 @@ export default function MarketplaceHomePage() {
 
   const statsRef = useScrollReveal();
   const categoriesRef = useScrollReveal();
-  const featuredRef = useScrollReveal();
   const ctaRef = useScrollReveal();
 
   useEffect(() => {
     async function loadData() {
       try {
+        console.log('[Home] Loading featured products...');
         const productsData = await getPublicFeaturedProducts();
-        console.log('Setting products:', productsData.length, productsData);
+        console.log('[Home] Setting products:', productsData.length, productsData);
         setFeaturedProducts(productsData);
       } catch (error) {
-        console.error('[Home] Failed to load data:', error);
+        console.error('[Home] Failed to load featured products:', error);
       } finally {
-        console.log('Setting loading false');
+        console.log('[Home] Setting loading false');
         setLoading(false);
       }
     }
     loadData();
   }, []);
 
-  console.log('RENDER:', { loading, productsLength: featuredProducts.length, firstProduct: featuredProducts[0]?.name });
+  console.log('[Home] RENDER:', { loading, productsLength: featuredProducts.length, firstProduct: featuredProducts[0]?.name });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -221,9 +221,9 @@ export default function MarketplaceHomePage() {
       </section>
 
       {/* ===== FEATURED PRODUCTS ===== */}
-      <section className="py-20 sm:py-28 px-5 sm:px-6 bg-dark-100">
+      <section className="py-20 sm:py-28 px-5 sm:px-6 bg-dark-100 relative z-10">
         <div className="max-w-7xl mx-auto">
-          <div className="scroll-reveal" ref={featuredRef}>
+          <div>
             <div className="flex items-end justify-between mb-14">
               <div>
                 <div className="tag-pill mb-4">
@@ -256,7 +256,7 @@ export default function MarketplaceHomePage() {
               ))}
             </div>
           ) : featuredProducts.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 scroll-reveal" ref={featuredRef}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {featuredProducts.map((product) => (
                 <Link key={product.id} href={`/products/${product.id}`} className="card-glass group">
                   <div className="relative h-52 bg-dark overflow-hidden rounded-t-[1.25rem]">

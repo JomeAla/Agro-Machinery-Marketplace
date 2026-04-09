@@ -1012,11 +1012,26 @@ export async function validateDiscountCode(code: string, amount: number): Promis
 }
 
 export async function getPublicFeaturedProducts(): Promise<Product[]> {
-  const response = await fetch(`${API_BASE_URL}/promotions/featured?_t=${Date.now()}`);
-  if (!response.ok) throw new Error('Failed to fetch featured products');
+  console.log('[API] Fetching featured products from:', `${API_BASE_URL}/promotions/featured`);
+  const response = await fetch(`${API_BASE_URL}/promotions/featured?_t=${Date.now()}`, {
+    headers: { 'Content-Type': 'application/json' },
+    cache: 'no-store',
+  });
+  console.log('[API] Response status:', response.status);
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('[API] Featured products API error:', response.status, errorText);
+    throw new Error(`Failed to fetch featured products: ${response.status}`);
+  }
   const data = await response.json();
+  console.log('[API] Featured products raw data length:', data.length);
+  if (data.length > 0) {
+    console.log('[API] First item keys:', Object.keys(data[0]));
+    console.log('[API] Has product nested?', 'product' in data[0]);
+  }
   return data.map((item: any) => {
     const product = item.product || item;
+    console.log('[API] Mapping product:', product.title || product.name);
     return {
       ...product,
       name: product.title || product.name,
