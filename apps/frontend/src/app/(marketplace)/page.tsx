@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getPublicFeaturedProducts, getCategories, Product } from '@/lib/api';
+import { getPublicFeaturedProducts, Product } from '@/lib/api';
 
 function useScrollReveal() {
   const ref = useRef<HTMLDivElement>(null);
@@ -45,21 +45,16 @@ export default function MarketplaceHomePage() {
   useEffect(() => {
     async function loadData() {
       try {
-        console.log('[Home] Loading featured products...');
         const productsData = await getPublicFeaturedProducts();
-        console.log('[Home] Setting products:', productsData.length, productsData);
         setFeaturedProducts(productsData);
       } catch (error) {
         console.error('[Home] Failed to load featured products:', error);
       } finally {
-        console.log('[Home] Setting loading false');
         setLoading(false);
       }
     }
     loadData();
   }, []);
-
-  console.log('[Home] RENDER:', { loading, productsLength: featuredProducts.length, firstProduct: featuredProducts[0]?.name });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,8 +66,7 @@ export default function MarketplaceHomePage() {
   return (
     <div>
       {/* ===== HERO ===== */}
-      <section className="relative min-h-[100dvh] flex items-center overflow-hidden">
-        {/* Background effects */}
+      <section className="relative min-h-[90dvh] flex items-center overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-gradient-to-b from-dark via-dark to-dark-100" />
           <div className="absolute top-[-200px] left-1/2 -translate-x-1/2 w-[1000px] h-[600px] rounded-full bg-accent/[0.07] blur-[150px]" />
@@ -80,24 +74,23 @@ export default function MarketplaceHomePage() {
           <div className="absolute top-1/3 left-[-100px] w-[300px] h-[300px] rounded-full bg-gold/[0.03] blur-[100px]" />
         </div>
 
-        {/* Grid pattern overlay */}
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
 
-        <div className="relative max-w-7xl mx-auto px-5 sm:px-6 w-full pt-32 pb-20">
+        <div className="relative max-w-7xl mx-auto px-5 sm:px-6 w-full py-20">
           <div className="max-w-3xl">
-            <div className="tag-pill mb-8 animate-fade-up">
+            <div className="tag-pill mb-6 animate-fade-up">
               <span className="tag-pill-dot" />
-              Nigeria's #1 Agri-Machinery Marketplace
+              Nigeria&apos;s #1 Agri-Machinery Marketplace
             </div>
 
-            <h1 className="font-display text-[3.5rem] sm:text-[4.5rem] lg:text-[5.5rem] font-bold leading-[0.9] tracking-tight text-white mb-8 animate-fade-up-delayed">
+            <h1 className="font-display text-[3rem] sm:text-[4rem] lg:text-[5rem] font-bold leading-[0.95] tracking-tight text-white mb-6 animate-fade-up-delayed">
               Farm smarter
               <br />
               with the right{' '}
               <span className="gradient-text-green">equipment</span>
             </h1>
 
-            <p className="text-lg sm:text-xl text-[var(--text-secondary)] max-w-lg mb-12 leading-relaxed animate-fade-up-delayed-2">
+            <p className="text-base sm:text-lg text-[var(--text-secondary)] max-w-lg mb-10 leading-relaxed animate-fade-up-delayed-2">
               Connect with 500+ verified sellers of tractors, harvesters, and implements across all 36 Nigerian states.
             </p>
 
@@ -124,8 +117,7 @@ export default function MarketplaceHomePage() {
               </div>
             </form>
 
-            {/* Quick tags */}
-            <div className="mt-10 flex flex-wrap gap-3 animate-fade-up-delayed-4">
+            <div className="mt-8 flex flex-wrap gap-3 animate-fade-up-delayed-4">
               {[
                 { label: 'New Equipment', href: '/products?condition=NEW' },
                 { label: 'Used Machinery', href: '/products?condition=USED' },
@@ -142,7 +134,6 @@ export default function MarketplaceHomePage() {
             </div>
           </div>
 
-          {/* Floating stat cards - desktop only */}
           <div className="hidden xl:block absolute right-12 top-1/2 -translate-y-1/2">
             <div className="space-y-4">
               {[
@@ -163,24 +154,23 @@ export default function MarketplaceHomePage() {
           </div>
         </div>
 
-        {/* Bottom gradient */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-dark-100 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-dark-100 to-transparent" />
       </section>
 
       {/* ===== STATS ===== */}
-      <section className="py-20 sm:py-28 px-5 sm:px-6 bg-dark-100">
+      <section className="py-16 sm:py-20 px-5 sm:px-6 bg-dark-100">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5 scroll-reveal" ref={statsRef}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4" ref={statsRef}>
             {[
               { value: '500+', label: 'Verified Sellers', sub: 'across Nigeria' },
               { value: '2,000+', label: 'Products Listed', sub: 'and growing' },
               { value: '5,000+', label: 'RFQs Processed', sub: 'successful quotes' },
               { value: '36', label: 'States', sub: 'nationwide coverage' },
             ].map((stat) => (
-              <div key={stat.label} className="card-glass p-6 sm:p-8 text-center group">
-                <div className="text-3xl sm:text-4xl font-bold text-white mb-1 group-hover:text-accent transition-colors duration-500">{stat.value}</div>
-                <div className="text-[12px] uppercase tracking-[0.15em] text-accent font-semibold mb-1">{stat.label}</div>
-                <div className="text-[11px] text-[var(--text-muted)]">{stat.sub}</div>
+              <div key={stat.label} className="card-glass p-5 sm:p-6 text-center group">
+                <div className="text-2xl sm:text-3xl font-bold text-white mb-1 group-hover:text-accent transition-colors duration-500">{stat.value}</div>
+                <div className="text-[11px] uppercase tracking-[0.15em] text-accent font-semibold mb-1">{stat.label}</div>
+                <div className="text-[10px] text-[var(--text-muted)]">{stat.sub}</div>
               </div>
             ))}
           </div>
@@ -188,30 +178,30 @@ export default function MarketplaceHomePage() {
       </section>
 
       {/* ===== CATEGORIES ===== */}
-      <section className="py-20 sm:py-28 px-5 sm:px-6">
+      <section className="py-16 sm:py-20 px-5 sm:px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="scroll-reveal" ref={categoriesRef}>
-            <div className="tag-pill mb-4">
+          <div className="text-center mb-12" ref={categoriesRef}>
+            <div className="tag-pill mb-4 inline-flex">
               <span className="tag-pill-dot" />
               Browse Equipment
             </div>
-            <h2 className="font-display text-4xl sm:text-5xl font-bold text-white mb-4">Categories</h2>
-            <p className="text-[var(--text-secondary)] text-lg max-w-lg mb-14">Find exactly what your farm needs.</p>
+            <h2 className="font-display text-3xl sm:text-4xl font-bold text-white mb-3">Categories</h2>
+            <p className="text-[var(--text-secondary)] text-base max-w-lg mx-auto">Find exactly what your farm needs.</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 scroll-reveal" ref={categoriesRef}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {categoryData.map((cat) => (
-              <Link key={cat.slug} href={`/products?category=${cat.slug}`} className="card-glass group p-7 flex items-start gap-5">
+              <Link key={cat.slug} href={`/products?category=${cat.slug}`} className="card-glass group p-6 flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-accent/[0.08] border border-accent/10 flex items-center justify-center shrink-0 transition-all duration-500 group-hover:bg-accent group-hover:border-accent group-hover:shadow-[0_0_20px_rgba(0,230,118,0.3)]">
                   <svg className="w-5 h-5 text-accent transition-colors duration-500 group-hover:text-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d={cat.icon} />
                   </svg>
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-[16px] font-bold text-white mb-1 group-hover:text-accent transition-colors">{cat.name}</h3>
-                  <p className="text-[13px] text-[var(--text-muted)]">{cat.desc}</p>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-[15px] font-bold text-white mb-0.5 group-hover:text-accent transition-colors truncate">{cat.name}</h3>
+                  <p className="text-[12px] text-[var(--text-muted)] truncate">{cat.desc}</p>
                 </div>
-                <svg className="w-5 h-5 text-white/10 mt-1 shrink-0 transition-all duration-500 group-hover:text-accent group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <svg className="w-5 h-5 text-white/10 shrink-0 transition-all duration-500 group-hover:text-accent group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                 </svg>
               </Link>
@@ -221,35 +211,33 @@ export default function MarketplaceHomePage() {
       </section>
 
       {/* ===== FEATURED PRODUCTS ===== */}
-      <section className="py-20 sm:py-28 px-5 sm:px-6 bg-dark-100 relative z-10">
+      <section className="py-16 sm:py-20 px-5 sm:px-6 bg-dark-100 relative z-10">
         <div className="max-w-7xl mx-auto">
-          <div>
-            <div className="flex items-end justify-between mb-14">
-              <div>
-                <div className="tag-pill mb-4">
-                  <span className="tag-pill-dot" />
-                  Featured
-                </div>
-                <h2 className="font-display text-4xl sm:text-5xl font-bold text-white mb-3">Popular Machinery</h2>
-                <p className="text-[var(--text-secondary)] text-lg">Top products from verified sellers.</p>
+          <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mb-10 gap-4">
+            <div className="text-center sm:text-left">
+              <div className="tag-pill mb-4 inline-flex">
+                <span className="tag-pill-dot" />
+                Featured
               </div>
-              <Link href="/products" className="hidden sm:flex btn-secondary">
-                View All
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                </svg>
-              </Link>
+              <h2 className="font-display text-3xl sm:text-4xl font-bold text-white mb-2">Popular Machinery</h2>
+              <p className="text-[var(--text-secondary)] text-base">Top products from verified sellers.</p>
             </div>
+            <Link href="/products" className="hidden sm:flex btn-secondary">
+              View All
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+            </Link>
           </div>
 
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="card-glass animate-pulse">
-                  <div className="h-52 bg-white/[0.03] rounded-t-[1.25rem]" />
-                  <div className="p-5 space-y-3">
+                  <div className="h-48 bg-white/[0.03] rounded-t-[1.25rem]" />
+                  <div className="p-4 space-y-2">
                     <div className="h-3 bg-white/[0.03] rounded w-16" />
-                    <div className="h-5 bg-white/[0.03] rounded w-3/4" />
+                    <div className="h-4 bg-white/[0.03] rounded w-3/4" />
                     <div className="h-4 bg-white/[0.03] rounded w-1/2" />
                   </div>
                 </div>
@@ -257,14 +245,14 @@ export default function MarketplaceHomePage() {
             </div>
           ) : featuredProducts.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {featuredProducts.map((product) => (
+              {featuredProducts.slice(0, 4).map((product) => (
                 <Link key={product.id} href={`/products/${product.id}`} className="card-glass group">
-                  <div className="relative h-52 bg-dark overflow-hidden rounded-t-[1.25rem]">
+                  <div className="relative h-48 bg-dark overflow-hidden rounded-t-[1.25rem]">
                     {product.images?.[0] ? (
                       <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-105" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <svg className="w-12 h-12 text-white/5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                        <svg className="w-10 h-10 text-white/5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
                         </svg>
                       </div>
@@ -277,15 +265,15 @@ export default function MarketplaceHomePage() {
                       {product.condition}
                     </span>
                   </div>
-                  <div className="p-5">
-                    <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--text-muted)] font-medium mb-2">
+                  <div className="p-4">
+                    <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--text-muted)] font-medium mb-1 truncate">
                       {typeof product.category === 'object' ? product.category.name : (product.category || 'Machinery')}
                     </p>
-                    <h3 className="text-[14px] font-bold text-white line-clamp-2 mb-3 group-hover:text-accent transition-colors">
+                    <h3 className="text-[13px] font-bold text-white line-clamp-2 mb-2 group-hover:text-accent transition-colors">
                       {product.name || product.title}
                     </h3>
                     <div className="flex items-center justify-between">
-                      <span className="text-[16px] font-bold text-accent">
+                      <span className="text-[14px] font-bold text-accent">
                         &#8358;{product.price?.toLocaleString() || '0'}
                       </span>
                       <div className="flex items-center gap-1 text-accent/60">
@@ -300,14 +288,14 @@ export default function MarketplaceHomePage() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-24 card-glass">
-              <div className="w-20 h-20 rounded-full bg-white/[0.03] flex items-center justify-center mx-auto mb-6">
+            <div className="text-center py-16 card-glass">
+              <div className="w-16 h-16 rounded-full bg-white/[0.03] flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-white/10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">No products listed yet</h3>
-              <p className="text-[var(--text-muted)] mb-8 max-w-sm mx-auto">Be the first to list agricultural machinery.</p>
+              <h3 className="text-lg font-bold text-white mb-2">No products listed yet</h3>
+              <p className="text-[var(--text-muted)] text-sm mb-6 max-w-sm mx-auto">Be the first to list agricultural machinery.</p>
               <Link href="/products" className="btn-primary">Browse Products</Link>
             </div>
           )}
@@ -319,73 +307,71 @@ export default function MarketplaceHomePage() {
       </section>
 
       {/* ===== RFQ CTA ===== */}
-      <section className="py-20 sm:py-28 px-5 sm:px-6">
+      <section className="py-16 sm:py-20 px-5 sm:px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="scroll-reveal" ref={ctaRef}>
-            <div className="card-glass p-8 sm:p-12 lg:p-16">
-              <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-                <div>
-                  <div className="tag-pill mb-5">
-                    <span className="tag-pill-dot" />
-                    Get Quotes
-                  </div>
-                  <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6 leading-tight">
-                    Need something
-                    <br />
-                    <span className="gradient-text-green">specific?</span>
-                  </h2>
-                  <p className="text-lg text-[var(--text-secondary)] mb-8 leading-relaxed max-w-md">
-                    Submit a Request for Quote and receive competitive offers from verified sellers across Nigeria.
-                  </p>
-                  <ul className="space-y-4 mb-10">
-                    {[
-                      'Get quotes from multiple verified sellers',
-                      'Automatic freight cost calculations',
-                      'Negotiate directly with sellers',
-                      'Secure escrow payment protection',
-                    ].map((item) => (
-                      <li key={item} className="flex items-start gap-3">
-                        <div className="w-5 h-5 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center mt-0.5 shrink-0">
-                          <svg className="w-3 h-3 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                          </svg>
-                        </div>
-                        <span className="text-[14px] text-[var(--text-secondary)]">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href="/rfq" className="btn-primary">
-                    <span>Request a Quote</span>
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                    </svg>
-                  </Link>
+          <div className="card-glass p-6 sm:p-10 lg:p-12">
+            <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+              <div className="text-center lg:text-left">
+                <div className="tag-pill mb-4 inline-flex">
+                  <span className="tag-pill-dot" />
+                  Get Quotes
                 </div>
-
-                <div className="bg-dark rounded-2xl p-8 sm:p-10 border border-white/[0.04]">
-                  <div className="text-center mb-8">
-                    <div className="w-14 h-14 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center mx-auto mb-4">
-                      <svg className="w-6 h-6 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-xl font-bold text-white">How It Works</h3>
-                  </div>
-                  <div className="space-y-4">
-                    {[
-                      { step: '01', title: 'Describe Your Need', desc: 'Fill out the RFQ form with your requirements' },
-                      { step: '02', title: 'Get Quotes', desc: 'Sellers submit their best offers' },
-                      { step: '03', title: 'Compare & Choose', desc: 'Review prices, specs, and seller ratings' },
-                    ].map((item) => (
-                      <div key={item.step} className="flex gap-4 p-4 rounded-xl bg-white/[0.03] border border-white/[0.04] hover:border-accent/10 transition-all duration-300">
-                        <div className="text-[11px] font-bold text-accent/40 shrink-0 mt-0.5">{item.step}</div>
-                        <div>
-                          <h4 className="text-[14px] font-bold text-white mb-0.5">{item.title}</h4>
-                          <p className="text-[12px] text-[var(--text-muted)]">{item.desc}</p>
-                        </div>
+                <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-4 leading-tight">
+                  Need something
+                  <br />
+                  <span className="gradient-text-green">specific?</span>
+                </h2>
+                <p className="text-[var(--text-secondary)] text-base mb-6 leading-relaxed max-w-md mx-auto lg:mx-0">
+                  Submit a Request for Quote and receive competitive offers from verified sellers across Nigeria.
+                </p>
+                <ul className="space-y-3 mb-8 max-w-sm mx-auto lg:mx-0">
+                  {[
+                    'Get quotes from multiple verified sellers',
+                    'Automatic freight cost calculations',
+                    'Negotiate directly with sellers',
+                    'Secure escrow payment protection',
+                  ].map((item) => (
+                    <li key={item} className="flex items-start gap-3">
+                      <div className="w-5 h-5 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center mt-0.5 shrink-0">
+                        <svg className="w-3 h-3 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
                       </div>
-                    ))}
+                      <span className="text-[13px] text-[var(--text-secondary)]">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/rfq" className="btn-primary">
+                  <span>Request a Quote</span>
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                </Link>
+              </div>
+
+              <div className="bg-dark rounded-2xl p-6 sm:p-8 border border-white/[0.04]">
+                <div className="text-center mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center mx-auto mb-3">
+                    <svg className="w-6 h-6 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                    </svg>
                   </div>
+                  <h3 className="text-lg font-bold text-white">How It Works</h3>
+                </div>
+                <div className="space-y-3">
+                  {[
+                    { step: '01', title: 'Describe Your Need', desc: 'Fill out the RFQ form with your requirements' },
+                    { step: '02', title: 'Get Quotes', desc: 'Sellers submit their best offers' },
+                    { step: '03', title: 'Compare & Choose', desc: 'Review prices, specs, and seller ratings' },
+                  ].map((item) => (
+                    <div key={item.step} className="flex gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.04] hover:border-accent/10 transition-all duration-300">
+                      <div className="text-[10px] font-bold text-accent/40 shrink-0 mt-0.5">{item.step}</div>
+                      <div>
+                        <h4 className="text-[13px] font-bold text-white mb-0.5">{item.title}</h4>
+                        <p className="text-[11px] text-[var(--text-muted)]">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -394,33 +380,33 @@ export default function MarketplaceHomePage() {
       </section>
 
       {/* ===== BOTTOM CTA ===== */}
-      <section className="py-20 sm:py-28 px-5 sm:px-6 relative overflow-hidden">
+      <section className="py-16 sm:py-20 px-5 sm:px-6 relative overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-gradient-to-r from-accent/[0.08] via-transparent to-accent/[0.04]" />
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
         </div>
-        <div className="relative max-w-3xl mx-auto text-center">
-          <div className="tag-pill mb-6 mx-auto" style={{ animation: 'pulseGlow 3s infinite' }}>
+        <div className="relative max-w-2xl mx-auto text-center">
+          <div className="tag-pill mb-5 mx-auto" style={{ animation: 'pulseGlow 3s infinite' }}>
             <span className="tag-pill-dot" />
             Join Today
           </div>
-          <h2 className="font-display text-4xl sm:text-5xl font-bold text-white mb-6 leading-tight">
+          <h2 className="font-display text-3xl sm:text-4xl font-bold text-white mb-5 leading-tight">
             Ready to transform your
             <br />
             <span className="gradient-text-green">agricultural operations?</span>
           </h2>
-          <p className="text-lg text-[var(--text-secondary)] max-w-lg mx-auto mb-10">
-            Join thousands of farmers and sellers on Nigeria's most trusted agricultural machinery marketplace.
+          <p className="text-[var(--text-secondary)] text-base max-w-lg mx-auto mb-8">
+            Join thousands of farmers and sellers on Nigeria&apos;s most trusted agricultural machinery marketplace.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/register" className="btn-primary py-4 px-8 text-[14px]">
+            <Link href="/register" className="btn-primary py-3 px-6 text-[14px]">
               Create Free Account
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
               </svg>
             </Link>
-            <Link href="/products" className="btn-secondary py-4 px-8 text-[14px]">
+            <Link href="/products" className="btn-secondary py-3 px-6 text-[14px]">
               Browse Products
             </Link>
           </div>
