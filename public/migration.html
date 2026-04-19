@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head><title>Migration</title></head>
+<body>
+<pre>
+<?php
+error_reporting(0);
+$host = 'localhost';
+$dbname = 'joalacom_joala';
+$user = 'joalacom_joala';
+$pass = 'joala@2025@';
+
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    
+    echo "Connected.\n";
+    
+    // funnels table
+    $cols = ['order_bumps','refund_policy','refund_period_days','affiliate_enabled','affiliate_commission','affiliate_cookie_days','score_per_page','score_per_email','score_per_checkout','score_hot_threshold'];
+    foreach ($cols as $c) {
+        try { $pdo->exec("ALTER TABLE funnels ADD $c VARCHAR(255)"); echo "Added $c\n"; } 
+        catch (Exception $e) { echo "Skip $c\n"; }
+    }
+    
+    // funnel_leads table  
+    $lc = ['score','last_activity','times_visited','pages_viewed','email_opens'];
+    foreach ($lc as $c) {
+        try { $pdo->exec("ALTER TABLE funnel_leads ADD $c INT"); echo "Added $c\n"; }
+        catch (Exception $e) { echo "Skip $c\n"; }
+    }
+    
+    echo "Done!";
+} catch (Exception $e) {
+    echo "Error: " . $e->getMessage();
+}
+?>
+</pre>
+</body>
+</html>
